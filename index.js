@@ -997,6 +997,7 @@ async function summarize_chat_modal() {
     // Let the user choose settings before summarizing the chat
     let html = `
 <h2 data-i18n="Summarize Chat">Summarize Chat</h2>
+<p data-i18n="Choose settings for the chat summarization. All message inclusion/exclusion settings from the main config profile are used, in addition to the following options.">Choose settings for the chat summarization. All message inclusion/exclusion settings from the main config profile are used, in addition to the following options.</p>
 <p><span data-i18n="Currently preparing to summarize:">Currently preparing to summarize:</span> <span id="number_to_summarize"></span></p>
 `
 
