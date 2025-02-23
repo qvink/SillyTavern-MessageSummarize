@@ -34,6 +34,7 @@ import { ARGUMENT_TYPE, SlashCommandArgument, SlashCommandNamedArgument } from '
 import { MacrosParser } from '../../../macros.js';
 import { commonEnumProviders } from '../../../slash-commands/SlashCommandCommonEnumsProvider.js';
 export { MODULE_NAME };
+import { t } from '../../../i18n.js';
 
 // THe module name modifies where settings are stored, where information is stored on message objects, macros, etc.
 const MODULE_NAME = 'qvink_memory';
@@ -995,39 +996,38 @@ async function get_user_setting_text_input(key, title) {
 async function summarize_chat_modal() {
     // Let the user choose settings before summarizing the chat
     let html = `
-<h2>Summarize Chat</h2>
-<p>Choose settings for the chat summarization. All message inclusion/exclusion settings from the main config profile are used, in addition to the following options.</p>
-<p>Currently preparing to summarize: <span id="number_to_summarize"></span></p>
+<h2 data-i18n="Summarize Chat">Summarize Chat</h2>
+<p><span data-i18n="Currently preparing to summarize:">Currently preparing to summarize:</span> <span id="number_to_summarize"></span></p>
 `
 
     let custom_inputs = [
         {
             id: "include_no_summary",
-            label: "Summarize messages with no existing summary",
+            label: t`Summarize messages with no existing summary`,
             type: "checkbox",
             defaultState: true,
         },
         {
             id: "include_short",
-            label: "Re-summarize messages with existing short-term memories",
+            label: t`Re-summarize messages with existing short-term memories`,
             type: "checkbox",
             defaultState: false,
         },
         {
             id: "include_long",
-            label: "Re-summarize messages with existing long-term memories",
+            label: t`Re-summarize messages with existing long-term memories`,
             type: "checkbox",
             defaultState: false,
         },
         {
             id: "include_excluded",
-            label: "Re-summarize messages with existing memories, but which are currently excluded from short-term and long-term memory",
+            label: t`Re-summarize messages with existing memories, but which are currently excluded from short-term and long-term memory`,
             type: "checkbox",
             defaultState: false,
         },
         {
             id: "include_edited",
-            label: "Re-summarize messages with existing memories that have been manually edited.",
+            label: t`Re-summarize messages with existing memories that have been manually edited.`,
             type: "checkbox",
             defaultState: false,
         },

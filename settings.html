@@ -3,7 +3,7 @@
 
         <div class="inline-drawer-toggle inline-drawer-header">
             <div class="flex-container alignitemscenter margin0">
-                <b>Qvink Memory</b>
+                <b data-i18n="Qvink Memory">Qvink Memory</b>
                 <i id="qvink_popout_button" class="fa-solid fa-window-restore menu_button margin0"></i>
             </div>
             <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
@@ -16,232 +16,232 @@
                 <hr>
 
                 <div class="flex-container justifyspacebetween alignitemscenter">
-                    <button id="toggle_chat_memory" class="menu_button flex1" title="Toggle whether memory is enabled for this chat specifically (overrides all settings)."><span>Toggle Chat Memory</span></button>
-                    <button id="preview_memory_state" class="menu_button fa-solid fa-eye margin0" title="Preview current memory state (the exact text that will be injected into your context)."></button>
-                    <button id="copy_summaries_to_clipboard" class="menu_button fa-solid fa-copy" title="Copy ALL memories to clipboard (all memories in the entire chat, not just those injected)."></button>
-                    <button id="refresh_memory" class="menu_button fa-solid fa-sync margin0" title="Just refreshes which memories are included and re-renders the memories under each message, doesn't change summaries. This is done automatically all the time, the button is here just in case."></button>
+                    <button id="toggle_chat_memory" class="menu_button flex1" title="Toggle whether memory is enabled for this chat specifically (overrides all settings)." data-i18n="[title]Toggle whether memory is enabled for this chat specifically (overrides all settings)."><span data-i18n="Toggle Chat Memory">Toggle Chat Memory</span></button>
+                    <button id="preview_memory_state" class="menu_button fa-solid fa-eye margin0" title="Preview current memory state (the exact text that will be injected into your context)." data-i18n="[title]Preview current memory state (the exact text that will be injected into your context)."></button>
+                    <button id="copy_summaries_to_clipboard" class="menu_button fa-solid fa-copy" title="Copy ALL memories to clipboard (all memories in the entire chat, not just those injected)." data-i18n="[title]Copy ALL memories to clipboard (all memories in the entire chat, not just those injected)."></button>
+                    <button id="refresh_memory" class="menu_button fa-solid fa-sync margin0" title="Just refreshes which memories are included and re-renders the memories under each message, doesn't change summaries. This is done automatically all the time, the button is here just in case." data-i18n="[title]Just refreshes which memories are included and re-renders the memories under each message, doesn't change summaries. This is done automatically all the time, the button is here just in case."></button>
                 </div>
 
                 <hr>
 
-                <h4 class="textAlignCenter">Active Settings Profile <i class="fa-solid fa-info-circle" title="Create, edit, and save configuration profiles for this extension."></i></h4>
+                <h4 class="textAlignCenter" data-i18n="Active Settings Profile ">Active Settings Profile <i class="fa-solid fa-info-circle" title="Create, edit, and save configuration profiles for this extension." data-i18n="[title]Create, edit, and save configuration profiles for this extension."></i></h4>
                 <div class="flex-container justifyspacebetween alignitemscenter">
-                    <select id="profile" class="flex1 text_pole" title="The currently selected profile"></select>
-                    <button id="save_profile" class="menu_button fa-solid fa-save interactable" title="Save current profile" tabindex="0"></button>
-                    <button id="rename_profile" class="menu_button fa-solid fa-pencil interactable" title="Rename current profile" tabindex="0"></button>
-                    <button id="new_profile" class="menu_button fa-solid fa-file-circle-plus interactable" title="Create new profile" tabindex="0"></button>
-                    <button id="restore_profile" class="menu_button fa-solid fa-recycle interactable" title="Restore current profile" tabindex="0"></button>
-                    <button id="delete_profile" class="menu_button fa-solid fa-trash-can interactable" title="Delete current profile" tabindex="0"></button>
-                    <button id="character_profile" class="menu_button fa-solid fa-lock interactable" title="Set as default profile for current character" tabindex="0"></button>
+                    <select id="profile" class="flex1 text_pole" title="The currently selected profile" data-i18n="[title]The currently selected profile"></select>
+                    <button id="save_profile" class="menu_button fa-solid fa-save interactable" title="Save current profile" tabindex="0" data-i18n=[title]Save current profile"></button>
+                    <button id="rename_profile" class="menu_button fa-solid fa-pencil interactable" title="Rename current profile" tabindex="0" data-i18n="[title]Rename current profile"></button>
+                    <button id="new_profile" class="menu_button fa-solid fa-file-circle-plus interactable" title="Create new profile" tabindex="0" data-i18n="[title]Create new profile"></button>
+                    <button id="restore_profile" class="menu_button fa-solid fa-recycle interactable" title="Restore current profile" tabindex="0" data-i18n="[title]Restore current profile"></button>
+                    <button id="delete_profile" class="menu_button fa-solid fa-trash-can interactable" title="Delete current profile" tabindex="0" data-i18n="[title]Delete current profile"></button>
+                    <button id="character_profile" class="menu_button fa-solid fa-lock interactable" title="Set as default profile for current character" tabindex="0" data-i18n="[title]Set as default profile for current character"></button>
                 </div>
 
 
                 <!-- Summarization -->
                 <hr>
-                <h4 class="textAlignCenter">Summarization <i class="fa-solid fa-info-circle" title="Customize the prompt used to summarize a given message"></i></h4>
+                <h4 class="textAlignCenter"><span data-i18n="Summarization">Summarization</span> <i class="fa-solid fa-info-circle" title="Customize the prompt used to summarize a given message" data-i18n="[title]Customize the prompt used to summarize a given message"></i></h4>
                 <div class="flex-container justifyspacebetween alignitemscenter">
-                    <button id="edit_summary_prompt" class="menu_button flex1" title="Edit the summary prompt" >Edit</button>
-                    <button id="preview_summary_prompt" class="menu_button fa-solid fa-eye" title="Preview the filled-in summary prompt, using the last message as an example." ></button>
-                    <button id="rerun_memory" class="menu_button fa-solid fa-rotate" title="Mass re-summarization. Brings up dialog to choose subsets of messages to summarize or re-summarize."></button>
-                    <button id="stop_summarization" class="menu_button fa-solid fa-stop" title="Stop all summarization immediately."></button>
+                    <button id="edit_summary_prompt" class="menu_button flex1" title="Edit the summary prompt" data-i18n="[title]Edit the summary prompt"><span data-i18n="Edit">Edit<span></button>
+                    <button id="preview_summary_prompt" class="menu_button fa-solid fa-eye" title="Preview the filled-in summary prompt, using the last message as an example." data-i18n="[title]Preview the filled-in summary prompt, using the last message as an example."></button>
+                    <button id="rerun_memory" class="menu_button fa-solid fa-rotate" title="Mass re-summarization. Brings up dialog to choose subsets of messages to summarize or re-summarize." data-i18n="[title]Mass re-summarization. Brings up dialog to choose subsets of messages to summarize or re-summarize."></button>
+                    <button id="stop_summarization" class="menu_button fa-solid fa-stop" title="Stop all summarization immediately." data-i18n="[title]Stop all summarization immediately."></button>
                 </div>
 
-                 <label class="checkbox_label" title="New messages will be automatically summarized if they will be included in short-term memory.">
+                <label class="checkbox_label" title="New messages will be automatically summarized if they will be included in short-term memory." data-i18n="[title]New messages will be automatically summarized if they will be included in short-term memory.">
                     <input id="auto_summarize" type="checkbox" />
-                    <span>Auto Summarize</span>
+                    <span data-i18n="Auto Summarize">Auto Summarize</span>
                 </label>
 
-                <label class="checkbox_label" title="Auto-summarization will be triggered before a new message is sent instead of after.">
+                <label class="checkbox_label" title="Auto-summarization will be triggered before a new message is sent instead of after." data-i18n="[title]Auto-summarization will be triggered before a new message is sent instead of after.">
                     <input id="auto_summarize_on_send" type="checkbox" />
-                    <span>Auto Summarize Before Generation</span>
+                    <span data-i18n="Auto Summarize Before Generation">Auto Summarize Before Generation</span>
                 </label>
 
-                <label title="Show the progress bar when auto-summarizing more than 1 message." class="checkbox_label">
+                <label title="Show the progress bar when auto-summarizing more than 1 message." class="checkbox_label" data-i18n="[title]Show the progress bar when auto-summarizing more than 1 message.">
                     <input id="auto_summarize_progress" type="checkbox" />
-                    <span>Auto Summarize Progress Bar</span>
+                    <span data-i18n="Auto Summarize Progress Bar">Auto Summarize Progress Bar</span>
                 </label>
 
-                <label class="checkbox_label" title="Number of messages to delay summarization (0 = summarize up to the most recent message, 1 = lag behind by one message, etc.)">
+                <label class="checkbox_label" title="Number of messages to delay summarization (0 = summarize up to the most recent message, 1 = lag behind by one message, etc.)" data-i18n="[title]Number of messages to delay summarization (0 = summarize up to the most recent message, 1 = lag behind by one message, etc.)">
                     <input id="summarization_delay" class="text_pole widthUnset inline_setting" type="number" min="0" max="999" />
-                    <span>Auto Summarize Message Lag</span>
+                    <span data-i18n="Auto Summarize Message Lag">Auto Summarize Message Lag</span>
                 </label>
 
-                <label class="checkbox_label" title="Wait until this many messages before auto-summarizing them all in sequence (1 = summarize every message immediately, 2 = summarize when you have two ready, etc). Still summarizes one at a time. ">
+                <label class="checkbox_label" title="Wait until this many messages before auto-summarizing them all in sequence (1 = summarize every message immediately, 2 = summarize when you have two ready, etc). Still summarizes one at a time. " data-i18n="[title]Wait until this many messages before auto-summarizing them all in sequence (1 = summarize every message immediately, 2 = summarize when you have two ready, etc). Still summarizes one at a time.">
                     <input id="auto_summarize_batch_size" class="text_pole widthUnset inline_setting" type="number" min="1" max="999" />
-                    <span>Auto Summarize Batch Size</span>
+                    <span data-i18n="Auto Summarize Batch Size">Auto Summarize Batch Size</span>
                 </label>
 
-                <label class="checkbox_label" title="The maximum number of messages back that auto-summarization will apply (-1 to disable).">
+                <label class="checkbox_label" title="The maximum number of messages back that auto-summarization will apply (-1 to disable)." data-i18n="[title]The maximum number of messages back that auto-summarization will apply (-1 to disable).">
                     <input id="auto_summarize_message_limit" class="text_pole widthUnset inline_setting" type="number" min="-1" max="999" />
-                    <span>Auto Summarize Message Limit</span>
+                    <span data-i18n="Auto Summarize Message Limit">Auto Summarize Message Limit</span>
                 </label>
 
-                <label class="checkbox_label" title="Time in seconds to wait between summarizations. May be needed if you are using a external API with a rate limit.">
+                <label class="checkbox_label" title="Time in seconds to wait between summarizations. May be needed if you are using a external API with a rate limit." data-i18n="[title]Time in seconds to wait between summarizations. May be needed if you are using a external API with a rate limit.">
                     <input id="summarization_time_delay" class="text_pole widthUnset inline_setting" type="number" min="0" max="999" />
-                    <span>Summarization Time Delay</span>
+                    <span data-i18n="Summarization Time Delay">Summarization Time Delay</span>
                 </label>
 
-                <label title="The maximum token length a summary is allowed to be before cutting it off. Use the {{words}} macro in the summarization prompt to get this value.">
+                <label title="The maximum token length a summary is allowed to be before cutting it off. Use the {{words}} macro in the summarization prompt to get this value." data-i18n="[title]The maximum token length a summary is allowed to be before cutting it off. Use the {{words}} macro in the summarization prompt to get this value.">
                     <input id="summary_maximum_length" class="text_pole widthUnset inline_setting" type="number" min="1" max="999" />
-                    <span>Summary Max Token Length</span>
+                    <span data-i18n="Summary Max Token Length">Summary Max Token Length</span>
                 </label>
 
-                <label title="Editing a message will automatically trigger a re-summarization if it has already been summarized." class="checkbox_label">
+                <label title="Editing a message will automatically trigger a re-summarization if it has already been summarized." class="checkbox_label" data-i18n="[title]Editing a message will automatically trigger a re-summarization if it has already been summarized.">
                     <input id="auto_summarize_on_edit" type="checkbox" />
-                    <span>Re-summarize on Edit</span>
+                    <span data-i18n="Re-summarize on Edit">Re-summarize on Edit</span>
                 </label>
 
-                <label title="Swiping a message will automatically trigger a re-summarization if it has already been summarized." class="checkbox_label">
+                <label title="Swiping a message will automatically trigger a re-summarization if it has already been summarized." class="checkbox_label" data-i18n="[title]Swiping a message will automatically trigger a re-summarization if it has already been summarized.">
                     <input id="auto_summarize_on_swipe" type="checkbox" />
-                    <span>Re-summarize on Swipe</span>
+                    <span data-i18n="Re-summarize on Swipe">Re-summarize on Swipe</span>
                 </label>
 
-                <label title="Block chat input while summarizing." class="checkbox_label">
+                <label title="Block chat input while summarizing." class="checkbox_label" data-i18n="[title]Block chat input while summarizing.">
                     <input id="block_chat" type="checkbox" />
-                    <span>Block Chat</span>
+                    <span data-i18n="Block Chat">Block Chat</span>
                 </label>
 
                 <br>
 
                 <div class="flex-container justifyspacebetween">
-                    <label title="Whether to use messages and/or summaries as context for summarization. You must use {{history}} in the summary prompt." class="checkbox_label">
-                        <span>Message History </span>
+                    <label title="Whether to use messages and/or summaries as context for summarization. You must use {{history}} in the summary prompt." class="checkbox_label" data-i18n="[title]Whether to use messages and/or summaries as context for summarization. You must use {{history}} in the summary prompt.">
+                        <span data-i18n="Message History">Message History </span>
                         <select id="include_message_history_mode" class="text_pole flex2">
-                            <option value="none">None</option>
-                            <option value="messages_only">Messages</option>
-                            <option value="summaries_only">Summaries</option>
-                            <option value="messages_and_summaries">Both</option>
+                            <option value="none" data-i18n="None">None</option>
+                            <option value="messages_only" data-i18n="Messages">Messages</option>
+                            <option value="summaries_only" data-i18n="Summaries">Summaries</option>
+                            <option value="messages_and_summaries" data-i18n="Both">Both</option>
                         </select>
                     </label>
-                    <button id="preview_message_history" class="menu_button fa-solid fa-eye interactable" title="Preview what the message history will look like"></button>
+                    <button id="preview_message_history" class="menu_button fa-solid fa-eye interactable" title="Preview what the message history will look like" data-i18n="[title]Preview what the message history will look like"></button>
                 </div>
 
-                <label title="How many previous messages to include in the summarization prompt as context.">
+                <label title="How many previous messages to include in the summarization prompt as context." data-i18n="[title]How many previous messages to include in the summarization prompt as context.">
                     <input id="include_message_history" class="text_pole widthUnset" type="number" min="1" max="99" />
-                    <span>Number of Previous Messages</span>
+                    <span data-i18n="Number of Previous Messages">Number of Previous Messages</span>
                 </label>
 
-                <label title="When including previous messages, also include user messages." class="checkbox_label">
+                <label title="When including previous messages, also include user messages." class="checkbox_label" data-i18n="[title]When including previous messages, also include user messages.">
                     <input id="include_user_messages_in_history" type="checkbox" />
-                    <span>Include Previous User Messages</span>
+                    <span data-i18n="Include Previous User Messages">Include Previous User Messages</span>
                 </label>
 
 
-                <label title="The message to summarize will be inside the system instruct template itself. In unchecked (default), the message will instead be added separately after the prompt. Some models benefit from this, but it is not recommended." class="checkbox_label">
+                <label title="The message to summarize will be inside the system instruct template itself. In unchecked (default), the message will instead be added separately after the prompt. Some models benefit from this, but it is not recommended." class="checkbox_label" data-i18n="[title]The message to summarize will be inside the system instruct template itself. In unchecked (default), the message will instead be added separately after the prompt. Some models benefit from this, but it is not recommended.">
                     <input id="nest_messages_in_prompt" type="checkbox" />
-                    <span>Nest Message in Summary Prompt</span>
+                    <span data-i18n="Nest Message in Summary Prompt">Nest Message in Summary Prompt</span>
                 </label>
 
-                <label title="WARNING: doesn't work great. Attempts to preserve context-shifting by including all the content that is sent in regular prompts (world info, description, personas, example messages, message history, etc). If your regular prompts are static, this can allow Context Shifting to work between summarizations, but it decreases the accuracy of summarization due to all the extra stuff in the prompt. It also can't be previewed as this injection is handled by ST, not the extension." class="checkbox_label">
+                <label title="WARNING: doesn't work great. Attempts to preserve context-shifting by including all the content that is sent in regular prompts (world info, description, personas, example messages, message history, etc). If your regular prompts are static, this can allow Context Shifting to work between summarizations, but it decreases the accuracy of summarization due to all the extra stuff in the prompt. It also can't be previewed as this injection is handled by ST, not the extension." class="checkbox_label" data-i18n="[title]WARNING: doesn't work great. Attempts to preserve context-shifting by including all the content that is sent in regular prompts (world info, description, personas, example messages, message history, etc). If your regular prompts are static, this can allow Context Shifting to work between summarizations, but it decreases the accuracy of summarization due to all the extra stuff in the prompt. It also can't be previewed as this injection is handled by ST, not the extension.">
                     <input id="include_world_info" type="checkbox" />
-                    <span>Include All Context Content</span>
+                    <span data-i18n="Include All Context Content">Include All Context Content</span>
                 </label>
 
 
                 <!-- Short-term memory -->
                 <hr>
-                <h4 class="textAlignCenter">Short-term Memory Injection <i class="fa-solid fa-info-circle" title="Determines which messages are included in the short-term memory injection and where. If you change this and include messages that weren't summarized previously, you can either manually trigger a re-summarization or just wait until automatic summarization triggers."></i></h4>
+                <h4 class="textAlignCenter"><span data-i18n="Short-term Memory Injection">Short-term Memory Injection</span> <i class="fa-solid fa-info-circle" title="Determines which messages are included in the short-term memory injection and where. If you change this and include messages that weren't summarized previously, you can either manually trigger a re-summarization or just wait until automatic summarization triggers." data-i18n="[title]Determines which messages are included in the short-term memory injection and where. If you change this and include messages that weren't summarized previously, you can either manually trigger a re-summarization or just wait until automatic summarization triggers."></i></h4>
 
                 <div class="flex-container justifyspacebetween alignitemscenter">
-                    <button id="edit_short_term_memory_prompt" class="menu_button flex1" title="Edit the short-term memory prompt"><span>Edit</span></button>
+                    <button id="edit_short_term_memory_prompt" class="menu_button flex1" title="Edit the short-term memory prompt" data-i18n="[title]Edit the short-term memory prompt"><span data-i18n="Edit">Edit</span></button>
                     <!--<button id="preview_short_term_memory" class="menu_button fa-solid fa-eye interactable" title="Preview the short-term memory injection" tabindex="0"></button>-->
                 </div>
 
 
-                <label title="Auto-summarize user messages and include summaries in memory." class="checkbox_label">
+                <label title="Auto-summarize user messages and include summaries in memory." class="checkbox_label" data-i18n="[title]Auto-summarize user messages and include summaries in memory.">
                     <input id="include_user_messages" type="checkbox" />
-                    <span>Include User Messages</span>
+                    <span data-i18n="Include User Messages">Include User Messages</span>
                 </label>
 
-                <label title="Auto-summarize system messages and include summaries in memory." class="checkbox_label">
+                <label title="Auto-summarize system messages and include summaries in memory." class="checkbox_label" data-i18n="[title]Auto-summarize system messages and include summaries in memory.">
                     <input id="include_system_messages" type="checkbox" />
-                    <span>Include System Messages</span>
+                    <span data-i18n="Include System Messages">Include System Messages</span>
                 </label>
 
-                <label title="Auto-summarize thought messages and include summaries in memory (from the Stepped Thinking extension)." class="checkbox_label">
+                <label title="Auto-summarize thought messages and include summaries in memory (from the Stepped Thinking extension)." class="checkbox_label" data-i18n="[title]Auto-summarize thought messages and include summaries in memory (from the Stepped Thinking extension).">
                     <input id="include_thought_messages" type="checkbox" />
-                    <span>Include Thought Message</span>
+                    <span data-i18n="Include Thought Message">Include Thought Message</span>
                 </label>
 
-                <label title="The minimum token length a message has to be in order to get summarized.">
+                <label title="The minimum token length a message has to be in order to get summarized." data-i18n="[title]The minimum token length a message has to be in order to get summarized.">
                     <input id="message_length_threshold" class="text_pole widthUnset inline_setting" type="number" min="0" max="999" />
-                    <span>Message Length Threshold</span>
+                    <span data-i18n="Message Length Threshold">Message Length Threshold</span>
                 </label>
 
                 <br>
 
-                <label title="The max percent of the context that short-term memory can take up.">
+                <label title="The max percent of the context that short-term memory can take up." data-i18n="[title]The max percent of the context that short-term memory can take up.">
                     <input id="short_term_context_limit" class="text_pole widthUnset inline_setting" type="number" min="0" max="100" />
-                    <span>Short-Term Context % (<span id="short_term_context_limit_display"></span> tk)</span>
+                    <span data-i18n="Short-Term Context %">Short-Term Context %</span><span> (<span id="short_term_context_limit_display"></span> tk)</span>
                 </label>
-                <label class="checkbox_label" title="Include short-term memory in the World Info Scan">
+                <label class="checkbox_label" title="Include short-term memory in the World Info Scan" data-i18n="[title]Include short-term memory in the World Info Scan">
                     <input id="short_term_scan" type="checkbox" />
-                    <span>Include in World Info Scanning</span>
+                    <span data-i18n="Include in World Info Scanning">Include in World Info Scanning</span>
                 </label>
                 <div class="radio_group">
                     <label>
                         <input type="radio" name="short_term_position" value="-1" />
-                        <span>Do not inject</span>
+                        <span data-i18n="Do not inject">Do not inject</span>
                     </label>
                     <label>
                         <input type="radio" name="short_term_position" value="2" />
-                        <span>Before main prompt</span>
+                        <span data-i18n="Before main prompt">Before main prompt</span>
                     </label>
                     <label>
                         <input type="radio" name="short_term_position" value="0" />
-                        <span>After main prompt</span>
+                        <span data-i18n="After main prompt">After main prompt</span>
                     </label>
-                    <label class="flex-container alignItemsCenter" title="How many messages before the current end of the chat.">
+                    <label class="flex-container alignItemsCenter" title="How many messages before the current end of the chat." data-i18n="[title]How many messages before the current end of the chat.">
                         <input type="radio" name="short_term_position" value="1" />
-                        <span>In chat at depth</span>
+                        <span data-i18n="In chat at depth">In chat at depth</span>
                         <input id="short_term_depth" class="text_pole inline_setting" type="number" min="0" max="99" />
-                        <span>as</span>
+                        <span data-i18n="as">as</span>
                         <select id="short_term_role" class="text_pole inline_setting">
-                            <option value="0">System</option>
-                            <option value="1">User</option>
-                            <option value="2">Assistant</option>
+                            <option value="0" data-i18n="System">System</option>
+                            <option value="1" data-i18n="User">User</option>
+                            <option value="2" data-i18n="Assistant">Assistant</option>
                         </select>
                     </label>
                 </div>
 
                 <!-- Long-term memory -->
                 <hr>
-                <h4 class="textAlignCenter">Long-Term Memory Injection <i class="fa-solid fa-info-circle" title="Determines where long-term messages are injected."></i></h4>
+                <h4 class="textAlignCenter"><span data-i18n="Long-Term Memory Injection">Long-Term Memory Injection</span> <i class="fa-solid fa-info-circle" title="Determines where long-term messages are injected." data-i18n="[title]Determines where long-term messages are injected."></i></h4>
                 <div class="flex-container justifyspacebetween alignitemscenter">
-                    <button id="edit_long_term_memory_prompt" class="menu_button flex1" title="Edit the long-term memory prompt"><span>Edit</span></button>
+                    <button id="edit_long_term_memory_prompt" class="menu_button flex1" title="Edit the long-term memory prompt" data-i18n="[title]Edit the long-term memory prompt"><span data-i18n="Edit">Edit</span></button>
                     <!--<button id="preview_long_term_memory" class="menu_button fa-solid fa-eye interactable" title="Preview the long-term memory injection" tabindex="0"></button>-->
                 </div>
 
-                <label title="The max percent of the context that long-term memory can take up.">
+                <label title="The max percent of the context that long-term memory can take up." data-i18n="[title]The max percent of the context that long-term memory can take up.">
                     <input id="long_term_context_limit" class="text_pole widthUnset" type="number" min="0" max="100" />
-                    <span>Long-Term Context % (<span id="long_term_context_limit_display"></span> tk)</span>
+                    <span data-i18n="Long-Term Context %">Long-Term Context %</span><span> (<span id="long_term_context_limit_display"></span> tk)</span>
                 </label>
-                <label class="checkbox_label" title="Include long-term memory in the World Info Scan">
+                <label class="checkbox_label" title="Include long-term memory in the World Info Scan" data-i18n="[title]Include long-term memory in the World Info Scan">
                     <input id="long_term_scan" type="checkbox" />
-                    <span>Include in World Info Scanning</span>
+                    <span data-i18n="Include in World Info Scanning">Include in World Info Scanning</span>
                 </label>
                 <div class="radio_group">
                     <label>
                         <input type="radio" name="long_term_position" value="-1" />
-                        <span>Do not inject</span>
+                        <span data-i18n="Do not inject">Do not inject</span>
                     </label>
                     <label>
                         <input type="radio" name="long_term_position" value="2" />
-                        <span>Before main prompt</span>
+                        <span data-i18n="Before main prompt">Before main prompt</span>
                     </label>
                     <label>
                         <input type="radio" name="long_term_position" value="0" />
-                        <span>After main prompt</span>
+                        <span data-i18n="After main prompt">After main prompt</span>
                     </label>
                     <label class="flex-container alignItemsCenter" title="How many messages before the current end of the chat.">
                         <input type="radio" name="long_term_position" value="1" />
-                        <span>In chat at depth</span>
+                        <span data-i18n="In chat at depth">In chat at depth</span>
                         <input id="long_term_depth" class="text_pole inline_setting" type="number" min="0" max="99" />
-                        <span>as</span>
+                        <span data-i18n="as">as</span>
                         <select id="long_term_role" class="text_pole inline_setting">
-                            <option value="0">System</option>
-                            <option value="1">User</option>
-                            <option value="2">Assistant</option>
+                            <option value="0" data-i18n="System">System</option>
+                            <option value="1" data-i18n="User">User</option>
+                            <option value="2" data-i18n="Assistant">Assistant</option>
                         </select>
                     </label>
                 </div>
@@ -249,30 +249,30 @@
 
                 <!-- Misc. -->
                 <hr>
-                <h4 class="textAlignCenter">Misc.</h4>
-                <label title="Fill your console with debug messages" class="checkbox_label">
+                <h4 class="textAlignCenter" data-i18n="Misc.">Misc.</h4>
+                <label title="Fill your console with debug messages" class="checkbox_label" data-i18n="[title]Fill your console with debug messages">
                     <input id="debug_mode" type="checkbox" />
-                    <span>Debug Mode</span>
+                    <span data-i18n="Debug Mode">Debug Mode</span>
                 </label>
 
-                <label title="Display summarizations below each message" class="checkbox_label">
+                <label title="Display summarizations below each message" class="checkbox_label" data-i18n="[title]Display summarizations below each message">
                     <input id="display_memories" type="checkbox" />
-                    <span>Display Memories</span>
+                    <span data-i18n="Display Memories">Display Memories</span>
                 </label>
 
-                <label title="Whether memory is enabled by default for new chats." class="checkbox_label">
+                <label title="Whether memory is enabled by default for new chats." class="checkbox_label" data-i18n="[title]Whether memory is enabled by default for new chats.">
                     <input id="default_chat_enabled" type="checkbox" />
-                    <span>Enable Memory in New Chats</span>
+                    <span data-i18n="Enable Memory in New Chats">Enable Memory in New Chats</span>
                 </label>
 
-                <label title="Limit the number of messages to send in regular prompts to this number (-1 for no limit). Message memories will still be sent.">
+                <label title="Limit the number of messages to send in regular prompts to this number (-1 for no limit). Message memories will still be sent." data-i18n="[title]Limit the number of messages to send in regular prompts to this number (-1 for no limit). Message memories will still be sent.">
                     <input id="limit_injected_messages" class="text_pole widthUnset" type="number" min="0" max="999" />
-                    <span>Limit Message History</span>
+                    <span data-i18n="Limit Message History">Limit Message History</span>
                 </label>
 
                 <div class="flex-container justifyspacebetween alignitemscenter">
-                    <button id="revert_settings" class="menu_button flex1 margin0" title="Revert all settings to default (not the default profile, just the default that comes with the extension). Your other profiles won't be affected.">
-                        <span>Revert Settings</span>
+                    <button id="revert_settings" class="menu_button flex1 margin0" title="Revert all settings to default (not the default profile, just the default that comes with the extension). Your other profiles won't be affected." data-i18n="[title]Revert all settings to default (not the default profile, just the default that comes with the extension). Your other profiles won't be affected.">
+                        <span data-i18n="Revert Settings">Revert Settings</span>
                     </button>
                 </div>
 
