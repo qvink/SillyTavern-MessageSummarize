@@ -1486,12 +1486,19 @@ function update_message_inclusion_flags() {
     let end = chat.length - 1;
     let summary = ""  // total concatenated summary so far
     let new_summary = ""  // temp summary storage to check token length
+    let memoryCount = 0;
+    let memoryLimit = get_settings('limit_injected_messages');
     for (let i = end; i >= 0; i--) {
         let message = chat[i];
 
         // check for any of the exclusion criteria
         let include = check_message_exclusion(message)
         if (!include) {
+            store_memory(message, 'include', null);
+            continue;
+        }
+
+        if (++memoryCount - memoryLimit <= 0) {
             store_memory(message, 'include', null);
             continue;
         }
