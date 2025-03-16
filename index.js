@@ -147,9 +147,6 @@ const global_settings = {
 const settings_ui_map = {}  // map of settings to UI elements
 
 
-
-
-
 // Utility functions
 function log(message) {
     console.log(`[${MODULE_NAME_FANCY}]`, message);
@@ -209,8 +206,15 @@ function get_preset_list() {
     return preset_manager.getAllPresets();
 }
 
-/** returns callback to restore original preset */
-function select_preset() {
+function wait_for_settings_update() {
+  return new Promise((resolve) => {
+    // TODO: we can't remove event listeners? :(
+    eventSource.on(event_types.SETTINGS_UPDATED, resolve);
+  })
+}
+
+/** returns callable to restore original preset */
+async function select_preset() {
     if (!get_settings('use_alternate_preset')) {
         return () => {};
     }
@@ -225,6 +229,8 @@ function select_preset() {
     if (alternate_preset != current_preset) {
         log("Setting preset to " + alternate_preset) // todo: get preset name
         preset_manager.selectPreset(alternate_preset)
+        await wait_for_settings_update();
+
         return () => {
             log("restoring preset to " + current_preset)
             preset_manager.selectPreset(current_preset)
@@ -1462,7 +1468,7 @@ async function summarize_messages(indexes, show_progress=true) {
     if (get_settings('block_chat')) {
         deactivateSendButtons();
     }
-    const restorePreset = select_preset();
+    const restorePreset = await select_preset();
     let n = 0;
     for (let i of indexes) {
         if (show_progress) progress_bar('summarize', n+1, indexes.length, "Summarizing");
@@ -1545,7 +1551,7 @@ async function summarize_message(index=null, switch_preset=true) {
 
     try {
         if (switch_preset) {
-            restorePreset = select_preset();
+            restorePreset = await select_preset();
         }
 
         debug(`Summarizing message ${index}...`)
