@@ -21,6 +21,8 @@ import {
     stopGeneration,
     callPopup
 } from '../../../../script.js';
+
+import {getPresetManager} from '../../../preset-manager.js'
 import { formatInstructModeChat } from '../../../instruct-mode.js';
 import { Popup, POPUP_TYPE } from '../../../popup.js';
 import { is_group_generating, selected_group, openGroupId } from '../../../group-chats.js';
@@ -111,6 +113,9 @@ const default_settings = {
     include_system_messages_in_history: false,  // include previous system messages in the summarization prompt when including message history
     include_thought_messages_in_history: false,  // include previous thought messages in the summarization prompt when including message history
 
+    use_alternate_preset: false, // switch to a different chat completion preset while summarizing
+    alternate_preset: null, // the selected chat completion preset
+
     // injection settings
     long_template: default_long_template,
     long_term_context_limit: 10,  // percentage of context size to use as long-term memory limit
@@ -197,27 +202,38 @@ function get_current_character_identifier() {
     return context.characters[index].avatar;
 }
 
+const preset_manager = getPresetManager();
+
 // Completion presets
-async function get_current_preset() {
-    // get the currently selected completion preset
-    return await executeSlashCommandsWithOptions(`/preset`)
+function get_preset_list() {
+    return preset_manager.getAllPresets();
 }
-async function set_preset(name) {
-    // Set the completion preset
-    if (get_settings('debug_mode')) {
-        toastr.info(`Setting completion preset to ${name}`);
+
+/** returns callback to restore original preset */
+function select_preset() {
+    if (!get_settings('use_alternate_preset')) {
+        return () => {};
     }
-    await executeSlashCommandsWithOptions(`/preset ${name}`)
+
+    const alternate_preset = get_settings('alternate_preset');
+    if (!alternate_preset) {
+        warn("Alternate preset unset. Continuing with current preset.");
+        return () => {};
+    }
+    const current_preset = preset_manager.getSelectedPreset();
+
+    if (alternate_preset != current_preset) {
+        log("Setting preset to " + alternate_preset) // todo: get preset name
+        preset_manager.selectPreset(alternate_preset)
+        return () => {
+            log("restoring preset to " + current_preset)
+            preset_manager.selectPreset(current_preset)
+        };
+    }
+
+    debug("Alternate preset is same as current preset.");
+    return () => {};
 }
-function get_presets() {
-    // get a list of the available presets
-    return $('#settings_preset_textgenerationwebui').children().map(function () {
-        return $(this).text();
-    }).get();
-}
-
-
-
 
 // Settings Management
 function initialize_settings() {
@@ -530,6 +546,21 @@ function refresh_settings() {
         }
 
     }
+
+    const selectList = $("#qvink_memory_completion_preset_select");
+    selectList.prop("required", get_settings('use_alternate_preset'));
+
+    // create the select for alternate summarization preset
+    selectList.empty();
+    const availablePresets = get_preset_list();
+
+    for (let i = 0; i < availablePresets.length; i++) {
+        let pre = document.createElement("option");
+        pre.value = i;
+        pre.text = availablePresets[i];
+        selectList.append(pre);
+    }
+
 
     if (current_character_profile) {  // set the current chosen profile in the dropdown
         choose_profile_dropdown.val(current_character_profile);
@@ -1431,7 +1462,7 @@ async function summarize_messages(indexes, show_progress=true) {
     if (get_settings('block_chat')) {
         deactivateSendButtons();
     }
-
+    const restorePreset = select_preset();
     let n = 0;
     for (let i of indexes) {
         if (show_progress) progress_bar('summarize', n+1, indexes.length, "Summarizing");
@@ -1442,7 +1473,7 @@ async function summarize_messages(indexes, show_progress=true) {
             break;
         }
 
-        await summarize_message(i);
+        await summarize_message(i, false);
 
         // wait for time delay if set
         let time_delay = get_settings('summarization_time_delay')
@@ -1466,6 +1497,8 @@ async function summarize_messages(indexes, show_progress=true) {
         n += 1;
     }
 
+    restorePreset();
+
     if (show_progress) remove_progress_bar('summarize')  // remove the progress bar
 
 
@@ -1481,7 +1514,7 @@ async function summarize_messages(indexes, show_progress=true) {
     refresh_memory()
 
 }
-async function summarize_message(index=null) {
+async function summarize_message(index=null, switch_preset=true) {
     // summarize a message given the chat index, replacing any existing memories
 
     let context = getContext();
@@ -1507,7 +1540,14 @@ async function summarize_message(index=null) {
     // summarize it
     let summary;
     let err = null;
+
+    let restorePreset = () => {};
+
     try {
+        if (switch_preset) {
+            restorePreset = select_preset();
+        }
+
         debug(`Summarizing message ${index}...`)
         summary = await summarize_text(prompt)
     } catch (e) {
@@ -1517,6 +1557,8 @@ async function summarize_message(index=null) {
             error(`Unrecognized error when summarizing message ${index}: ${e}`)
         }
         summary = null
+    } finally {
+        restorePreset();
     }
 
     if (summary) {
@@ -2073,6 +2115,8 @@ function initialize_settings_listeners() {
     bind_setting('#display_memories', 'display_memories', 'boolean')
     bind_setting('#default_chat_enabled', 'default_chat_enabled', 'boolean');
     bind_setting('#limit_injected_messages', 'limit_injected_messages', 'number');
+    bind_setting('#qvink_use_alternate_preset', 'use_alternate_preset', 'boolean');
+    bind_setting('#qvink_memory_completion_preset_select', 'alternate_preset', 'text');
 
     // trigger the change event once to update the display at start
     $('#long_term_context_limit').trigger('change');

@@ -40,6 +40,16 @@
                 <hr>
                 <h4 class="textAlignCenter">Summarization <i class="fa-solid fa-info-circle" title="Customize the prompt used to summarize a given message"></i></h4>
                 <div class="flex-container justifyspacebetween alignitemscenter">
+                    <label class="checkbox_label" title="Switch preset before summarizing">
+                        <input id="qvink_use_alternate_preset" type="checkbox" />
+                        <span>Switch preset before summarizing</span>
+                    </label>
+                    <select id="qvink_memory_completion_preset_select">
+
+                    </select>
+                </div>
+
+                <div class="flex-container justifyspacebetween alignitemscenter">
                     <button id="edit_summary_prompt" class="menu_button flex1" title="Edit the summary prompt" >Edit</button>
                     <button id="preview_summary_prompt" class="menu_button fa-solid fa-eye" title="Preview the filled-in summary prompt, using the last message as an example." ></button>
                     <button id="rerun_memory" class="menu_button fa-solid fa-rotate" title="Mass re-summarization. Brings up dialog to choose subsets of messages to summarize or re-summarize."></button>
