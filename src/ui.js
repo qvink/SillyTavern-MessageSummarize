@@ -9,7 +9,7 @@ import { saveSettingsDebounced } from '../../../../script.js';
 import { download, parseJsonFile, copyText, stringToRange } from '../../../../utils.js';
 import { t, translate } from '../../../../i18n.js';
 import { get_current_preset, get_presets, check_preset_valid, get_connection_profiles, check_connection_profile_valid, get_summary_preset_max_tokens, get_connection_profile_api, get_summary_connection_profile } from './api.js';
-import { get_data, get_memory, edit_memory, remember_message_toggle, forget_message_toggle, clear_memory, check_message_exclusion, concatenate_summaries, get_long_memory, get_short_memory, refresh_memory, stop_summarization } from './main.js';
+import { get_data, get_memory, edit_memory, remember_message_toggle, forget_message_toggle, clear_memory, check_message_exclusion, concatenate_summaries, get_long_memory, get_short_memory, refresh_memory, stop_summarization, summarize_messages, auto_summarize_chat } from './main.js';
 import { getRegexScripts, runRegexScript } from '../../../../scripts/extensions/regex/index.js';
 import { createRawPrompt, messageFormatting, scrollChatToBottom } from '../../../../script.js';
 
@@ -532,6 +532,54 @@ function close_popout() {
     state.POPOUT_VISIBLE = false;
 }
 
+function open_edit_memory_input(index) {
+    // Allow the user to edit a message summary
+    let message = getContext().chat[index];
+    let memory = get_memory(message)
+    memory = memory?.trim() ?? '';  // get the current memory text
+
+    let $message_div = get_message_div(index);  // top level div for this message
+    let $message_text_div = $message_div.find('.mes_text')  // holds message text
+    let $memory_div = $message_div.find(`div.${summary_div_class}`);  // div holding the memory text
+
+    // Hide the memory div and add the textarea after the main message text
+    let $textarea = $(`<textarea class="${css_message_div} ${css_edit_textarea}" rows="1"></textarea>`);
+    $memory_div.hide();
+    $message_text_div.after($textarea);
+    $textarea.focus();  // focus on the textarea
+    $textarea.val(memory);  // set the textarea value to the memory text (this is done after focus to keep the cursor at the end)
+    $textarea.height($textarea[0].scrollHeight-10);  // set the height of the textarea to fit the text
+
+    function confirm_edit() {
+        let new_memory = $textarea.val();
+        if (new_memory === memory) {  // no change
+            cancel_edit()
+            return;
+        }
+        edit_memory(message, new_memory)
+        $textarea.remove();  // remove the textarea
+        $memory_div.show();  // show the memory div
+        refresh_memory();
+    }
+
+    function cancel_edit() {
+        $textarea.remove();  // remove the textarea
+        $memory_div.show();  // show the memory div
+    }
+
+    // save when the textarea loses focus, or when enter is pressed
+    $textarea.on('blur', confirm_edit);
+    $textarea.on('keydown', function (event) {
+        if (event.key === 'Enter') {  // confirm edit
+            event.preventDefault();
+            confirm_edit();
+        } else if (event.key === 'Escape') {  // cancel edit
+            event.preventDefault();
+            cancel_edit();
+        }
+    })
+}
+
 export function initialize_message_buttons() {
     // Add buttons to each message for summarization actions
     $(document).on('click', `.${summarize_button_class}`, function() {
@@ -759,53 +807,6 @@ export function update_all_message_visuals() {
     for (let i=chat.length-1; i >= first_displayed_message_id; i--) {
         update_message_visuals(i, true);
     }
-}
-export function open_edit_memory_input(index) {
-    // Allow the user to edit a message summary
-    let message = getContext().chat[index];
-    let memory = get_memory(message)
-    memory = memory?.trim() ?? '';  // get the current memory text
-
-    let $message_div = get_message_div(index);  // top level div for this message
-    let $message_text_div = $message_div.find('.mes_text')  // holds message text
-    let $memory_div = $message_div.find(`div.${summary_div_class}`);  // div holding the memory text
-
-    // Hide the memory div and add the textarea after the main message text
-    let $textarea = $(`<textarea class="${css_message_div} ${css_edit_textarea}" rows="1"></textarea>`);
-    $memory_div.hide();
-    $message_text_div.after($textarea);
-    $textarea.focus();  // focus on the textarea
-    $textarea.val(memory);  // set the textarea value to the memory text (this is done after focus to keep the cursor at the end)
-    $textarea.height($textarea[0].scrollHeight-10);  // set the height of the textarea to fit the text
-
-    function confirm_edit() {
-        let new_memory = $textarea.val();
-        if (new_memory === memory) {  // no change
-            cancel_edit()
-            return;
-        }
-        edit_memory(message, new_memory)
-        $textarea.remove();  // remove the textarea
-        $memory_div.show();  // show the memory div
-        refresh_memory();
-    }
-
-    function cancel_edit() {
-        $textarea.remove();  // remove the textarea
-        $memory_div.show();  // show the memory div
-    }
-
-    // save when the textarea loses focus, or when enter is pressed
-    $textarea.on('blur', confirm_edit);
-    $textarea.on('keydown', function (event) {
-        if (event.key === 'Enter') {  // confirm edit
-            event.preventDefault();
-            confirm_edit();
-        } else if (event.key === 'Escape') {  // cancel edit
-            event.preventDefault();
-            cancel_edit();
-        }
-    })
 }
 export function display_injection_preview() {
     let text = refresh_memory()

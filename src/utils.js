@@ -1,5 +1,6 @@
 import { getContext, extension_settings } from '../../../../extensions.js';
-import { debounce, getStringHash, toastr } from '../../../../script.js';
+import { debounce } from '../../../../script.js';
+import { getStringHash } from '../../../../utils.js';
 import { MODULE_NAME_FANCY } from './constants.js';
 import { get_settings } from './settings.js';
 
@@ -169,7 +170,9 @@ export function compare_semver(v1, v2){
 }
 
 export async function get_manifest() {
-    const response = await fetch('/scripts/extensions/message-summarize-v2/manifest.json');
+    const url = new URL(import.meta.url);
+    const path = url.pathname.substring(0, url.pathname.lastIndexOf('/'));
+    const response = await fetch(`${path}/../manifest.json`);
     return await response.json();
 }
 
