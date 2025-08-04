@@ -1,9 +1,8 @@
-import { getContext, extension_settings } from '../../../extensions.js';
-import { debounce, getStringHash } from '../../../../script.js';
+import { getContext, extension_settings } from '../../../../extensions.js';
+import { debounce, getStringHash } from '../../../../../script.js';
 import { MODULE_NAME_FANCY } from './constants.js';
 import { get_settings } from './settings.js';
 
-// Utility functions
 export function log(message) {
     console.log(`[${MODULE_NAME_FANCY}]`, message);
 }
@@ -20,33 +19,50 @@ export function delay(ms) {
     return new Promise(res => setTimeout(res, ms));
 }
 export function toast(message, type="info") {
+    // debounce the toast messages
     toastr[type](message, MODULE_NAME_FANCY);
 }
 export const toast_debounced = debounce(toast, 500);
 
+export const saveChatDebounced = debounce(() => getContext().saveChat(), 500);
+
 export function count_tokens(text, padding = 0) {
+    // count the number of tokens in a text
     let ctx = getContext();
     return ctx.getTokenCount(text, padding);
 }
 
 export function get_current_character_identifier() {
+    // uniquely identify the current character
+    // You have to use the character's avatar image path to uniquely identify them
     let context = getContext();
+
+    // If a group, we can use the group ID to uniquely identify it
     if (context.groupId) {
-        return context.groupId;
+        return context.groupId
     }
+
+    // Otherwise get the avatar image path of the current character
     let index = context.characterId;
-    if (!index) {
+    if (!index) {  // not a character
         return null;
     }
+
     return context.characters[index].avatar;
 }
-
 export function get_current_chat_identifier() {
+    // uniquely identify the current chat
     let context = getContext();
-    return context.chatId;
-}
+    return context.chatId
 
+}
+export function get_extension_directory() {
+    // get the directory of the extension
+    let index_path = new URL(import.meta.url).pathname
+    return index_path.substring(0, index_path.lastIndexOf('/'))  // remove the /index.js from the path
+}
 export function clean_string_for_html(text) {
+    // clean a given string for use in a div title.
     return text.replace(/["&'<>]/g, function(match) {
         switch (match) {
             case '"': return "&quot;";
@@ -55,12 +71,14 @@ export function clean_string_for_html(text) {
             case "<": return "&lt;";
             case ">": return "&gt;";
         }
-    });
+    })
+    // return $('<div/>').text(text).html();
 }
-
 export function escape_string(text) {
-    if (!text) return text;
+    // escape control characters in the text
+    if (!text) return text
     return text.replace(/[\x00-\x1F\x7F]/g, function(match) {
+        // Escape control characters
         switch (match) {
           case '\n': return '\\n';
           case '\t': return '\\t';
@@ -71,53 +89,61 @@ export function escape_string(text) {
         }
     });
 }
-
 export function unescape_string(text) {
-    if (!text) return text;
+    // given a string with escaped characters, unescape them
+    if (!text) return text
     return text.replace(/\\[ntrbf0x][0-9a-f]{2}|\\[ntrbf]/g, function(match) {
         switch (match) {
           case '\\n': return '\n';
-          case '\t': return '\t';
-          case '\r': return '\r';
-          case '\b': return '\b';
-          case '\f': return '\f';
+          case '\\t': return '\t';
+          case '\r': return '\\r';
+          case '\b': return '\\b';
+          case '\f': return '\\f';
           default: {
+            // Handle escaped hexadecimal characters like \\xNN
             const hexMatch = match.match(/\\x([0-9a-f]{2})/i);
             if (hexMatch) {
               return String.fromCharCode(parseInt(hexMatch[1], 16));
             }
-            return match;
+            return match; // Return as is if no match
           }
         }
     });
 }
-
 export function assign_and_prune(target, source) {
-    let keys = Object.keys(target).concat(Object.keys(source));
+    // Modifies target in-place while also deleting any keys not in source
+    let keys = Object.keys(target).concat(Object.keys(source))
     for (let key of keys) {
         if (!(key in source)) delete target[key];
         else target[key] = source[key];
     }
 }
-
 export function assign_defaults(target, source) {
+    // Modifies target in-place, assigning values only when they don't exist in the target.
     for (let key of Object.keys(source)) {
         if (!(key in target)) target[key] = source[key];
     }
 }
-
 export function check_objects_different(obj_1, obj_2) {
+    // check whether two objects are different by checking each key, recursively
+    // if both are objects, recurse on each element of obj_1
+    // The "instanceof" method is true for Objects, Arrays, and Sets.
     if (obj_1 instanceof Object && obj_2 instanceof Object) {
-        let keys = Object.keys(obj_1).concat(Object.keys(obj_2));
+        let keys = Object.keys(obj_1).concat(Object.keys(obj_2))
         for (let key of keys) {
             if (check_objects_different(obj_1[key], obj_2[key])) {
-                return true;
+                return true  // different
             }
         }
-        return false;
-    } else {
-        return obj_1 !== obj_2;
+        return false  // not different
+    } else {  // not both objects - check equality directly
+        return obj_1 !== obj_2  // return if different
     }
+}
+export function regex(string, re) {
+    // Returns an array of all matches in capturing groups
+    let matches = [...string.matchAll(re)];
+    return matches.flatMap(m => m.slice(1).filter(Boolean));
 }
 
 export function compare_semver(v1, v2){
