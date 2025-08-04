@@ -3,7 +3,7 @@ import { createRawPrompt, generateRaw, streamingProcessor, CONNECT_API_MAP, main
 import { getRegexScripts } from '../../../../scripts/extensions/regex/index.js';
 import { runRegexScript } from '../../../../scripts/extensions/regex/engine.js';
 import { get_settings } from './settings.js';
-import { debug, error, toast_debounced, count_tokens } from './utils.js';
+import { debug, error, toast_debounced, count_tokens, get_context_size } from './utils.js';
 import { getPresetManager } from '../../../../preset-manager.js';
 import { state } from './state.js';
 

@@ -167,3 +167,12 @@ export function compare_semver(v1, v2){
     }
     return 0;
 }
+
+export async function get_manifest() {
+    const response = await fetch('/scripts/extensions/message-summarize-v2/manifest.json');
+    return await response.json();
+}
+
+export function get_context_size() {
+    return getContext().context_size;
+}

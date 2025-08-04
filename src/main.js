@@ -1,5 +1,5 @@
 import { getContext, extension_settings } from '../../../../extensions.js';
-import { scrollChatToBottom, saveSettingsDebounced, amount_gen, system_message_types, main_api, chat_metadata, messageFormatting, CLIENT_VERSION } from '../../../../script.js';
+import { scrollChatToBottom, saveSettingsDebounced, amount_gen, system_message_types, main_api, chat_metadata, messageFormatting, CLIENT_VERSION, debounce } from '../../../../script.js';
 import { getPresetManager } from '../../../../preset-manager.js';
 import { formatInstructModeChat, formatInstructModePrompt } from '../../../../instruct-mode.js';
 import { selected_group, openGroupId } from '../../../../group-chats.js';
@@ -12,9 +12,9 @@ import { t, translate } from '../../../../i18n.js';
 import { MODULE_NAME, REQUIRE_ST_VERSION, long_memory_macro, short_memory_macro } from './constants.js';
 import { state, setStopSummarization, setSummarizationDelayTimeout, setSummarizationDelayResolve } from './state.js';
 import { get_settings, set_settings, initialize_settings, chat_enabled, check_message_exclusion, remember_message_toggle, forget_message_toggle, clear_memory, toggle_memory_value, get_previous_swipe_memory, get_character_key } from './settings.js';
-import { log, debug, error, toast, saveChatDebounced, count_tokens, getStringHash, compare_semver } from './utils.js';
+import { log, debug, error, toast, saveChatDebounced, count_tokens, getStringHash, compare_semver, get_manifest } from './utils.js';
 import { summarize_text, get_summary_preset, set_preset, get_current_preset, get_summary_connection_profile, get_current_connection_profile, set_connection_profile } from './api.js';
-import { update_message_visuals, update_all_message_visuals, progress_bar, remove_progress_bar, initialize_popout, initialize_message_buttons, initialize_group_member_buttons, initialize_slash_commands, initialize_menu_buttons, add_i18n, set_character_enabled_button_states, refresh_settings, load_settings_html, MemoryEditInterface, SummaryPromptEditInterface } from './ui.js';
+import { update_message_visuals, update_all_message_visuals, progress_bar, remove_progress_bar, initialize_popout, initialize_message_buttons, initialize_group_member_buttons, initialize_slash_commands, initialize_menu_buttons, add_i18n, set_character_enabled_button_states, refresh_settings, load_settings_html, MemoryEditInterface, SummaryPromptEditInterface, initialize_settings_listeners } from './ui.js';
 
 // Message functions
 export function set_data(message, key, value) {
