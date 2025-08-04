@@ -1,0 +1,25 @@
+{
+  "name": "st-messagesummarize-v2",
+  "version": "2.0.0",
+  "description": "A SillyTavern extension for summarizing messages and managing chat memory.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/s0ulgu1tar/ST-MessageSummarize-v2.git"
+  },
+  "keywords": [
+    "sillytavern",
+    "extension",
+    "summarize",
+    "memory"
+  ],
+  "author": "qvink (updated by s0ulgu1tar)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/s0ulgu1tar/ST-MessageSummarize-v2/issues"
+  },
+  "homepage": "https://github.com/s0ulgu1tar/ST-MessageSummarize-v2#readme"
+}
