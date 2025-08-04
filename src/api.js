@@ -1,7 +1,7 @@
 import { getContext } from '../../../../extensions.js';
-import { createRawPrompt, generateRaw, streamingProcessor, CONNECT_API_MAP, main_api, amount_gen, trimToEndSentence } from '../../../../../script.js';
-import { getRegexScripts } from '../../../../../scripts/extensions/regex/index.js';
-import { runRegexScript } from '../../../../../scripts/extensions/regex/engine.js';
+import { createRawPrompt, generateRaw, streamingProcessor, CONNECT_API_MAP, main_api, amount_gen, trimToEndSentence } from '../../../../script.js';
+import { getRegexScripts } from '../../../../scripts/extensions/regex/index.js';
+import { runRegexScript } from '../../../../scripts/extensions/regex/engine.js';
 import { get_settings } from './settings.js';
 import { debug, error, toast_debounced, count_tokens } from './utils.js';
 import { getPresetManager } from '../../../../preset-manager.js';

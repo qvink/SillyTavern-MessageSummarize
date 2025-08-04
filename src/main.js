@@ -1,5 +1,5 @@
 import { getContext, extension_settings } from '../../../../extensions.js';
-import { scrollChatToBottom, saveSettingsDebounced, amount_gen, system_message_types, main_api, chat_metadata, messageFormatting, CLIENT_VERSION } from '../../../../../script.js';
+import { scrollChatToBottom, saveSettingsDebounced, amount_gen, system_message_types, main_api, chat_metadata, messageFormatting, CLIENT_VERSION } from '../../../../script.js';
 import { getPresetManager } from '../../../../preset-manager.js';
 import { formatInstructModeChat, formatInstructModePrompt } from '../../../../instruct-mode.js';
 import { selected_group, openGroupId } from '../../../../group-chats.js';

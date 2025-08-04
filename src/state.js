@@ -1,4 +1,4 @@
-import { extension_prompt_roles, extension_prompt_types } from '../../../../../script.js';
+import { extension_prompt_roles, extension_prompt_types } from '../../../../script.js';
 import { default_prompt, default_summary_macros, default_long_template, default_short_template } from './constants.js';
 
 export const state = {

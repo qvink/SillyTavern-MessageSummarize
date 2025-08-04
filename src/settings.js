@@ -1,5 +1,5 @@
 import { getContext, extension_settings } from '../../../../extensions.js';
-import { getMaxContextSize, saveSettingsDebounced } from '../../../../../script.js';
+import { getMaxContextSize, saveSettingsDebounced } from '../../../../script.js';
 import { global_settings, default_settings } from './state.js';
 import { get_current_character_identifier, get_current_chat_identifier, log, error, toast } from './utils.js';
 import { refresh_memory } from './main.js';
