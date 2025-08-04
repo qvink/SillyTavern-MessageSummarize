@@ -1,4 +1,5 @@
 ### Contents
+- [Quick Start](#quick-start)
 - [Description](#description)
 - [Motivation](#motivation)
 - [Notable Features](#notable-features)
@@ -11,6 +12,15 @@
 - [Reporting an Issue](#reporting-an-issue)
 - [Known Issues](#known-issues)
 
+
+### Quick Start
+
+1.  **Installation:** In SillyTavern, go to the extensions panel and install using this repository's URL: `https://github.com/s0ulgu1tar/ST-MessageSummarize-v2.git`
+2.  **Enable:** The extension is enabled by default for new chats. You can toggle it for the current chat using the "Toggle Memory" button in the extension's settings panel.
+3.  **Usage:**
+    *   Messages are automatically summarized based on the default settings.
+    *   To mark a message for long-term memory, click the "brain" icon on the message.
+    *   Customize summarization behavior in the settings panel.
 
 ### Description
 - This extension is an alternative to the built-in `Summarize` extension, reworking how memory is stored by summarizing each message individually, rather than all at once.
@@ -46,7 +56,7 @@ How this extension addresses these issues:
   - Grey: Excluded
 
 ### Installation and Basic Usage
-- Install the extension in ST using the github link: https://github.com/qvink/SillyTavern-MessageSummarize
+- Install the extension in SillyTavern using this repository's URL: `https://github.com/s0ulgu1tar/ST-MessageSummarize-v2.git`
 - To mark a message for long-term memory, click the "brain" icon in the message button menu.
 - To re-summarize a message, click the "Quote" icon in the message button menu.
 - To edit a summary, click on the summary text directly or click the "pen" icon in the message button menu.
