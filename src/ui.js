@@ -13,6 +13,280 @@ import { get_data, get_memory, edit_memory, remember_message_toggle, forget_mess
 import { getRegexScripts, runRegexScript } from '../../../../scripts/extensions/regex/index.js';
 import { createRawPrompt, messageFormatting, scrollChatToBottom } from '../../../../script.js';
 
+// Class interfaces
+export class MemoryEditInterface {
+    // A class to handle the memory editing interface
+    constructor() {
+        this.setup();
+    }
+
+    setup() {
+        // create the modal
+        let container = document.createElement('div');
+        container.id = 'qvink-memory-edit-interface';
+        container.classList.add('draggable');
+        container.classList.add('resizable');
+        container.style.position = 'absolute';
+        container.style.top = '20%';
+        container.style.left = '30%';
+        container.style.width = '800px';
+        container.style.maxHeight = '600px';
+        container.style.zIndex = '1000';
+        container.style.display = 'none';
+        document.body.appendChild(container);
+
+        let header = document.createElement('div');
+        header.id = 'qvink-memory-edit-interface-header';
+        header.classList.add('handle');
+        header.style.cursor = 'move';
+        header.style.backgroundColor = '#444';
+        header.style.color = 'white';
+        header.style.padding = '10px';
+        header.textContent = 'Edit Memories';
+        container.appendChild(header);
+
+        let content = document.createElement('div');
+        content.style.padding = '10px';
+        content.style.backgroundColor = '#333';
+        content.style.color = 'white';
+        content.style.overflowY = 'auto';
+        content.style.maxHeight = '540px';
+        container.appendChild(content);
+
+        let table = document.createElement('table');
+        table.style.width = '100%';
+        content.appendChild(table);
+
+        let thead = document.createElement('thead');
+        table.appendChild(thead);
+
+        let tr = document.createElement('tr');
+        thead.appendChild(tr);
+
+        let th1 = document.createElement('th');
+        th1.textContent = 'Character';
+        tr.appendChild(th1);
+
+        let th2 = document.createElement('th');
+        th2.textContent = 'Message';
+        tr.appendChild(th2);
+
+        let th3 = document.createElement('th');
+        th3.textContent = 'Memory';
+        tr.appendChild(th3);
+
+        let tbody = document.createElement('tbody');
+        table.appendChild(tbody);
+
+        this.container = container;
+        this.tbody = tbody;
+
+        dragElement(container);
+    }
+
+    open() {
+        this.update_table();
+        this.container.style.display = 'block';
+    }
+
+    close() {
+        this.container.style.display = 'none';
+    }
+
+    update_table() {
+        this.tbody.innerHTML = '';
+        let chat = getContext().chat;
+        for (let i = 0; i < chat.length; i++) {
+            let message = chat[i];
+            let tr = document.createElement('tr');
+            this.tbody.appendChild(tr);
+
+            let td1 = document.createElement('td');
+            td1.textContent = message.name;
+            tr.appendChild(td1);
+
+            let td2 = document.createElement('td');
+            td2.textContent = message.mes;
+            tr.appendChild(td2);
+
+            let td3 = document.createElement('td');
+            let memory = get_memory(message);
+            let textarea = document.createElement('textarea');
+            textarea.value = memory;
+            textarea.style.width = '100%';
+            textarea.style.height = '100px';
+            textarea.addEventListener('change', (event) => {
+                edit_memory(message, event.target.value);
+            });
+            td3.appendChild(textarea);
+            tr.appendChild(td3);
+        }
+    }
+}
+
+export class SummaryPromptEditInterface {
+    // A class to handle the summary prompt editing interface
+    constructor() {
+        this.setup();
+    }
+
+    setup() {
+        // create the modal
+        let container = document.createElement('div');
+        container.id = 'qvink-summary-prompt-edit-interface';
+        container.classList.add('draggable');
+        container.classList.add('resizable');
+        container.style.position = 'absolute';
+        container.style.top = '20%';
+        container.style.left = '30%';
+        container.style.width = '800px';
+        container.style.maxHeight = '600px';
+        container.style.zIndex = '1000';
+        container.style.display = 'none';
+        document.body.appendChild(container);
+
+        let header = document.createElement('div');
+        header.id = 'qvink-summary-prompt-edit-interface-header';
+        header.classList.add('handle');
+        header.style.cursor = 'move';
+        header.style.backgroundColor = '#444';
+        header.style.color = 'white';
+        header.style.padding = '10px';
+        header.textContent = 'Edit Summary Prompt';
+        container.appendChild(header);
+
+        let content = document.createElement('div');
+        content.style.padding = '10px';
+        content.style.backgroundColor = '#333';
+        content.style.color = 'white';
+        content.style.overflowY = 'auto';
+        content.style.maxHeight = '540px';
+        container.appendChild(content);
+
+        let prompt_label = document.createElement('label');
+        prompt_label.textContent = 'Prompt:';
+        content.appendChild(prompt_label);
+
+        let prompt_textarea = document.createElement('textarea');
+        prompt_textarea.style.width = '100%';
+        prompt_textarea.style.height = '200px';
+        content.appendChild(prompt_textarea);
+
+        let macros_label = document.createElement('label');
+        macros_label.textContent = 'Macros:';
+        content.appendChild(macros_label);
+
+        let macros_table = document.createElement('table');
+        macros_table.style.width = '100%';
+        content.appendChild(macros_table);
+
+        let macros_thead = document.createElement('thead');
+        macros_table.appendChild(macros_thead);
+
+        let macros_tr = document.createElement('tr');
+        macros_thead.appendChild(macros_tr);
+
+        let th1 = document.createElement('th');
+        th1.textContent = 'Name';
+        macros_tr.appendChild(th1);
+
+        let th2 = document.createElement('th');
+        th2.textContent = 'Enabled';
+        macros_tr.appendChild(th2);
+
+        let th3 = document.createElement('th');
+        th3.textContent = 'Description';
+        macros_tr.appendChild(th3);
+
+        let macros_tbody = document.createElement('tbody');
+        macros_table.appendChild(macros_tbody);
+
+        this.container = container;
+        this.prompt_textarea = prompt_textarea;
+        this.macros_tbody = macros_tbody;
+
+        dragElement(container);
+    }
+
+    open() {
+        this.update_interface();
+        this.container.style.display = 'block';
+    }
+
+    close() {
+        this.container.style.display = 'none';
+    }
+
+    update_interface() {
+        let profile = get_profile_settings();
+        this.prompt_textarea.value = profile.prompt;
+        this.macros_tbody.innerHTML = '';
+        for (let [name, macro] of Object.entries(profile.summary_prompt_macros)) {
+            let tr = document.createElement('tr');
+            this.macros_tbody.appendChild(tr);
+
+            let td1 = document.createElement('td');
+            td1.textContent = name;
+            tr.appendChild(td1);
+
+            let td2 = document.createElement('td');
+            let checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = macro.enabled;
+            checkbox.addEventListener('change', (event) => {
+                macro.enabled = event.target.checked;
+                let profiles = get_settings('profiles');
+                profiles[get_settings('profile')] = profile;
+                set_settings('profiles', profiles);
+            });
+            td2.appendChild(checkbox);
+            tr.appendChild(td2);
+
+            let td3 = document.createElement('td');
+            td3.textContent = macro.description;
+            tr.appendChild(td3);
+        }
+    }
+
+    async create_summary_prompt(index) {
+        let profile = get_profile_settings();
+        let prompt = profile.prompt;
+        let macros = profile.summary_prompt_macros;
+        let message = getContext().chat[index];
+
+        for (let [name, macro] of Object.entries(macros)) {
+            if (macro.enabled) {
+                let value = '';
+                if (macro.type === 'special') {
+                    if (name === 'message') {
+                        value = message.mes;
+                    }
+                } else if (macro.type === 'custom') {
+                    if (name === 'words') {
+                        value = await get_summary_preset_max_tokens();
+                    }
+                } else if (macro.type === 'preset') {
+                    let history = '';
+                    let start = Math.max(0, index - macro.end);
+                    let end = Math.max(0, index - macro.start);
+                    for (let i = start; i < end; i++) {
+                        let history_message = getContext().chat[i];
+                        if (macro.bot_messages && !history_message.is_user) {
+                            history += `${history_message.name}: ${history_message.mes}\n`;
+                        }
+                        if (macro.user_messages && history_message.is_user) {
+                            history += `${history_message.name}: ${history_message.mes}\n`;
+                        }
+                    }
+                    value = history;
+                }
+                prompt = prompt.replace(`{{${name}}}`, value);
+            }
+        }
+        return prompt;
+    }
+}
+
 export async function load_settings_html() {
     const settings_html = `
     <div id="qvink_memory_settings" class="qvink_memory_settings_content">

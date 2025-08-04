@@ -2,7 +2,7 @@ import { getContext } from '../../../../extensions.js';
 import { createRawPrompt, generateRaw, streamingProcessor, CONNECT_API_MAP, main_api, amount_gen, trimToEndSentence } from '../../../../script.js';
 import { getRegexScripts } from '../../../../scripts/extensions/regex/index.js';
 import { runRegexScript } from '../../../../scripts/extensions/regex/engine.js';
-import { get_settings } from './settings.js';
+import { get_settings, get_profile_settings } from './settings.js';
 import { debug, error, toast_debounced, count_tokens, get_context_size } from './utils.js';
 import { getPresetManager } from '../../../../preset-manager.js';
 import { state } from './state.js';
@@ -14,7 +14,8 @@ export function get_current_preset() {
 }
 export async function get_summary_preset() {
     // get the current summary preset OR the default if it isn't valid for the current API
-    let preset_name = get_settings('completion_preset');
+    let profile = get_profile_settings();
+    let preset_name = profile.completion_preset;
     if (preset_name === "" || !await verify_preset(preset_name)) {  // none selected or invalid, use the current preset
         preset_name = get_current_preset();
     }
@@ -27,7 +28,8 @@ export async function set_preset(name) {
 
     // Set the completion preset
     debug(`Setting completion preset to ${name}`)
-    if (get_settings('debug_mode')) {
+    let profile = get_profile_settings();
+    if (profile.debug_mode) {
         toastr.info(`Setting completion preset to ${name}`);
     }
     let ctx = getContext();
@@ -57,7 +59,8 @@ export async function verify_preset(name) {
 }
 export async function check_preset_valid() {
     // check whether the current preset selected for summarization is valid
-    let summary_preset = get_settings('completion_preset')
+    let profile = get_profile_settings();
+    let summary_preset = profile.completion_preset;
     let valid_preset = await verify_preset(summary_preset)
     if (!valid_preset) {
         toast_debounced(`Your selected summary preset "${summary_preset}" is not valid for the current API.`, "warning")
@@ -131,7 +134,8 @@ export async function get_connection_profile_api(name) {
 }
 export async function get_summary_connection_profile() {
     // get the current connection profile OR the default if it isn't valid for the current API
-    let name = get_settings('connection_profile');
+    let profile = get_profile_settings();
+    let name = profile.connection_profile;
 
     // If none selected, invalid, or connection profiles not active, use the current profile
     if (name === "" || !await verify_connection_profile(name) || !check_connection_profiles_active()) {
@@ -148,7 +152,8 @@ export async function set_connection_profile(name) {
 
     // Set the completion preset
     debug(`Setting connection profile to "${name}"`)
-    if (get_settings('debug_mode')) {
+    let profile = get_profile_settings();
+    if (profile.debug_mode) {
         toastr.info(`Setting connection profile to "${name}"`);
     }
     let ctx = getContext();
@@ -180,7 +185,8 @@ export async function verify_connection_profile(name) {
 export async function check_connection_profile_valid()  {
     // check whether the current connection profile selected for summarization is valid
     if (!check_connection_profiles_active()) return;  // if the extension isn't active, return
-    let summary_connection = get_settings('connection_profile')
+    let profile = get_profile_settings();
+    let summary_connection = profile.connection_profile;
     let valid = await verify_connection_profile(summary_connection)
     if (!valid) {
         toast_debounced(`Your selected summary connection profile "${summary_connection}" is not valid.`, "warning")
@@ -200,10 +206,11 @@ export async function summarize_text(messages, summaryPromptEditInterface) {
     }
 
     // prompt, api, instructOverride, systemMode, systemPrompt, responseLength, trimNames, prefill
+    let profile = get_profile_settings();
     let result = await generateRaw({
         prompt: messages,
         trimNames: false,
-        prefill: get_settings('prefill')
+        prefill: profile.prefill
     });
 
     // trim incomplete sentences if set in ST settings
