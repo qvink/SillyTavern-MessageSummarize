@@ -6,7 +6,6 @@ import { get_settings } from './settings.js';
 import { debug, error, toast_debounced, count_tokens } from './utils.js';
 import { getPresetManager } from '../../../../preset-manager.js';
 import { state } from './state.js';
-import { summaryPromptEditInterface } from './ui.js';
 
 // Completion presets
 export function get_current_preset() {
@@ -189,7 +188,7 @@ export async function check_connection_profile_valid()  {
     return valid
 }
 
-export async function summarize_text(messages) {
+export async function summarize_text(messages, summaryPromptEditInterface) {
     let ctx = getContext()
 
     // get size of text

@@ -1,5 +1,5 @@
 import { getContext, extension_settings } from '../../../../extensions.js';
-import { debounce, getStringHash } from '../../../../script.js';
+import { debounce, getStringHash, toastr } from '../../../../script.js';
 import { MODULE_NAME_FANCY } from './constants.js';
 import { get_settings } from './settings.js';
 

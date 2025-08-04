@@ -372,7 +372,7 @@ export async function summarize_message(index) {
     let err = null;
     try {
         debug(`Summarizing message ${index}...`)
-        summary = await summarize_text(prompt)
+        summary = await summarize_text(prompt, state.summaryPromptEditInterface)
     } catch (e) {
         if (e === "Clicked stop button") {  // summarization was aborted
             err = "Summarization aborted"

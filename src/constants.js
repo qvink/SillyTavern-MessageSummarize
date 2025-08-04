@@ -1,3 +1,5 @@
+import { extension_prompt_types, extension_prompt_roles } from '../../../../script.js';
+
 export const MODULE_NAME = 'qvink_memory';
 export const MODULE_NAME_FANCY = 'Qvink Memory';
 export const PROGRESS_BAR_ID = `${MODULE_NAME}_progress_bar`;

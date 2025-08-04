@@ -1,7 +1,8 @@
 import { getContext, extension_settings } from '../../../../extensions.js';
 import { dragElement } from '../../../../RossAscends-mods.js';
 import { settings_div_id, settings_content_class, MODULE_NAME, long_memory_macro, short_memory_macro, generic_memories_macro, remember_button_class, forget_button_class, summarize_button_class, edit_button_class, css_message_div, css_long_memory, css_short_memory, css_remember_memory, css_exclude_memory, css_lagging_memory, css_removed_message, summary_div_class, summary_reasoning_class, css_edit_textarea, PROGRESS_BAR_ID, group_member_enable_button, group_member_enable_button_highlight } from './constants.js';
-import { global_settings, settings_ui_map, default_settings, state } from './state.js';
+import { global_settings, default_settings, settings_ui_map } from './defaults.js';
+import { state } from './state.js';
 import { get_settings, set_settings, get_short_token_limit, get_long_token_limit, chat_enabled, toggle_chat_enabled, character_enabled, toggle_character_enabled, reset_settings, load_profile } from './settings.js';
 import { log, toast, get_current_character_identifier, get_current_chat_identifier, assign_and_prune, check_objects_different, assign_defaults, clean_string_for_html, escape_string, unescape_string, regex, debug } from './utils.js';
 import { saveSettingsDebounced } from '../../../../script.js';
