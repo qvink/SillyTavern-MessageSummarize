@@ -11,20 +11,21 @@ import {
 import {
     animation_duration,
     scrollChatToBottom,
-    extension_prompt_roles,
-    extension_prompt_types,
     saveSettingsDebounced,
-    chat_metadata,
+    getCharacterCardFields,
+    messageFormatting,
     generateRaw,
     createRawPrompt,
     getMaxContextSize,
     streamingProcessor,
     amount_gen,
     system_message_types,
+    extension_prompt_roles,
+    extension_prompt_types,
     CONNECT_API_MAP,
     main_api,
-    messageFormatting,
-    getCharacterCardFields
+    online_status,
+    chat_metadata,
 } from '../../../../script.js';
 import { getContext, extension_settings, saveMetadataDebounced} from '../../../extensions.js';
 import { getPresetManager } from '../../../preset-manager.js'
@@ -374,6 +375,28 @@ function add_i18n($element=null) {
         });
     })
 }
+async function wait_for_event(name, timeout=5000) {
+    // Wait for the given ST event asynchronously
+    let ctx = getContext()
+    let eventSource = ctx.eventSource
+    debug(`Waiting for event`, name)
+    return new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+            eventSource.removeListener(event, onEvent);
+            reject(new Error(`Timed out waiting for event "${name}"`));
+        }, timeout);
+
+        function onEvent(...args) {
+            clearTimeout(timer);
+            eventSource.removeListener(name, onEvent);
+            resolve(...args);
+            debug(`Received and resolved event "${name}"`);
+        }
+
+        eventSource.once(name, onEvent);
+    });
+}
+
 
 // Completion presets
 function get_current_preset() {
@@ -519,16 +542,25 @@ async function set_connection_profile(name) {
     if (get_settings('debug_mode')) {
         toastr.info(`Setting connection profile to "${name}"`);
     }
+
     let ctx = getContext();
-    await ctx.executeSlashCommandsWithOptions(`/profile ${name}`)
-    //await delay(2000)
+    const waitForLoad = wait_for_event(ctx.event_types.CONNECTION_PROFILE_LOADED, 5000);  // set trigger when profile loads
+
+    try {
+        await ctx.executeSlashCommandsWithOptions(`/profile ${name}`)  // call the "/profile" command to set it
+        await waitForLoad;  // wait for the profile to load
+        debug(`Profile loaded. Waiting for status to change...`);
+        await waitUntilCondition(() => online_status !== 'no_connection', 5000, 100);  // wait for profile to be online
+        debug(`Saw online_status change (${online_status}). Connection profile set to ${name}.`);
+    } catch (e) {
+        error(`Failed to set connection profile "${name}": ${e}`);
+    }
 }
 async function get_connection_profiles() {
     // Get a list of available connection profiles
-
     if (!check_connection_profiles_active()) return;  // if the extension isn't active, return
     let ctx = getContext();
-    let result = await ctx.executeSlashCommandsWithOptions(`/profile-list`)
+    let result = await ctx.executeSlashCommandsWithOptions(`/profile-list`)  // the "/profile-list" command returns a stringified list
     try {
         return JSON.parse(result.pipe)
     } catch {
