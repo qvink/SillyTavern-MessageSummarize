@@ -534,7 +534,7 @@ async function get_summary_connection_profile() {
 async function set_connection_profile(name) {
     // Set the connection profile
     if (!check_connection_profiles_active()) return;  // if the extension isn't active, return
-    if (name === await get_current_connection_profile()) return;  // If already using the given profile, return
+    if (!name || name === await get_current_connection_profile()) return;  // If already using the given profile, return
     if (!await check_connection_profile_valid()) return;  // don't set an invalid profile
 
     // Set the completion preset
