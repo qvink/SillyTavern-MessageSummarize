@@ -7,7 +7,6 @@
 - [Slash Commands](#slash-commands)
 - [Custom CSS](#custom-css)
 - [Tips & Tricks](#tips--tricks)
-- [FAQ](#frequently-asked-questions)
 - [Troubleshooting](#troubleshooting)
 - [Reporting an Issue](#reporting-an-issue)
 - [Known Issues](#known-issues)
@@ -174,9 +173,6 @@ Try them out if you want.
 
 
 - **Cloud Models are Picky**: Cloud APIs tend to have strict rules about how their prompts are constructed, so you may need to adjust things when creating your prompt. For example, some models have heavy filters enabled for `User` roles messages, and may work better with `System` messages. Some cloud models don't support `System` messages at all, so you would need to use `User`. You will need to experiment, or read up on what your particular cloud model expects.
-
-
-### Frequently Asked Questions
 
 ### Troubleshooting:
 
