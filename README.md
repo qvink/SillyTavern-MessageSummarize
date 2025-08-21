@@ -258,8 +258,8 @@ You can raise an issue here, but I am more responsive on the SillyTavern [Discor
 
 When you report an issue, please include the following information:
 1. Description of the bug
-2. Your SillyTavern version + branch
-3. Your extension version + branch
+2. Your SillyTavern version + branch (actual numbers, not just "latest")
+3. Your extension version + branch (actual numbers, not just "latest")
 4. Whether you are using **Text Completion** or **Chat Completion** (and the model you are using, if relevant).
 5. Let me know that you read the above [Troubleshooting](#troubleshooting) section, and what didn't work or if your issue wasn't there.
 6. Detailed steps to reproduce the bug in a **minimal environment** (new chat, default config, no other extensions).
