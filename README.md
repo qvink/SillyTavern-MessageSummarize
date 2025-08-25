@@ -11,6 +11,8 @@
 - [Reporting an Issue](#reporting-an-issue)
 - [Known Issues](#known-issues)
 
+### Version Requirement
+Requires ST v1.13.2 or above.
 
 ### Description
 - This extension is an alternative to the built-in `Summarize` extension, reworking how memory is stored by summarizing each message individually, rather than all at once.
@@ -175,6 +177,10 @@ Try them out if you want.
 - **Cloud Models are Picky**: Cloud APIs tend to have strict rules about how their prompts are constructed, so you may need to adjust things when creating your prompt. For example, some models have heavy filters enabled for `User` roles messages, and may work better with `System` messages. Some cloud models don't support `System` messages at all, so you would need to use `User`. You will need to experiment, or read up on what your particular cloud model expects.
 
 ### Troubleshooting:
+
+- **I don't see the extension in the extension menu or I don't see any new buttons in the message menu:**
+You are most likely using an outdated version of ST - make sure to update to the latest version.
+
 
 - **The summaries refer to "a person" / "an individual" / "someone" rather than by name:** 
   1. Try using the `{{user}}` or `{{char}}` macros in the summary prompt.
