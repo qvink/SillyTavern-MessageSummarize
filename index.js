@@ -975,6 +975,14 @@ function refresh_settings() {
         let excluding_messages = get_settings('exclude_messages_after_threshold')
         get_settings_element('keep_last_user_message')?.prop('disabled', !excluding_messages)
 
+        // hide/show the mid-chat injection options
+        let mid_chat = get_settings_element('short_term_position')?.val() === '1'
+        get_settings_element('short_term_depth')?.parent().toggle(mid_chat)
+        get_settings_element('short_term_role')?.parent().toggle(mid_chat)
+        mid_chat = get_settings_element('long_term_position')?.val() === '1'
+        get_settings_element('long_term_depth')?.parent().toggle(mid_chat)
+        get_settings_element('long_term_role')?.parent().toggle(mid_chat)
+
 
     } else {  // memory is disabled for this chat
         $(`.${settings_content_class} .settings_input`).prop('disabled', true);  // disable all settings
@@ -4197,27 +4205,27 @@ function initialize_settings_listeners() {
 
     bind_setting('#summary_injection_separator', 'summary_injection_separator', 'text');
     bind_setting('#summary_injection_threshold', 'summary_injection_threshold', 'number');
-    bind_setting('input[name="summary_injection_threshold_type"]', 'summary_injection_threshold_type', 'text');
+    bind_setting('#summary_injection_threshold_type', 'summary_injection_threshold_type', 'text');
     bind_setting('#exclude_messages_after_threshold', 'exclude_messages_after_threshold', 'boolean');
     bind_setting('#injection_threshold_update_trigger_messages', 'injection_threshold_update_trigger_messages', 'number');
     bind_setting('#injection_threshold_update_trigger_summaries', 'injection_threshold_update_trigger_summaries', 'number')
     bind_setting('#injection_threshold_update_trigger_context', 'injection_threshold_update_trigger_context', 'number')
     bind_setting('#keep_last_user_message', 'keep_last_user_message', 'boolean');
 
-    bind_setting('input[name="short_term_position"]', 'short_term_position', 'number');
+    bind_setting('#short_term_position', 'short_term_position', 'number');
     bind_setting('#short_term_depth', 'short_term_depth', 'number');
     bind_setting('#short_term_role', 'short_term_role');
     bind_setting('#short_term_scan', 'short_term_scan', 'boolean');
     bind_setting('#short_term_context_limit', 'short_term_context_limit', 'number')
-    bind_setting('input[name="short_term_context_type"]', 'short_term_context_type', 'text')
+    bind_setting('#short_term_context_type', 'short_term_context_type', 'text')
 
     bind_setting('#separate_long_term', 'separate_long_term', 'boolean');
-    bind_setting('input[name="long_term_position"]', 'long_term_position', 'number');
+    bind_setting('#long_term_position', 'long_term_position', 'number');
     bind_setting('#long_term_depth', 'long_term_depth', 'number');
     bind_setting('#long_term_role', 'long_term_role');
     bind_setting('#long_term_scan', 'long_term_scan', 'boolean');
     bind_setting('#long_term_context_limit', 'long_term_context_limit', 'number')
-    bind_setting('input[name="long_term_context_type"]', 'long_term_context_type', 'text')
+    bind_setting('#long_term_context_type', 'long_term_context_type', 'text')
 
     bind_setting('#debug_mode', 'debug_mode', 'boolean');
     bind_setting('#display_memories', 'display_memories', 'boolean')

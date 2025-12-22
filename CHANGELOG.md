@@ -7,6 +7,7 @@
 - **New Feature**: Parallel API requests now supported, configured by the `Parallel Summaries` setting. Auto-summary will block chat generation by default, but this can be disabled via the `Block Generation` toggle.
 - **New Feature**: New injection settings called `Update Triggers` which delays updating the injection threshold until certain criteria are met. This is useful for reducing how frequently your context cache is invalidated by adding summaries.
 - **Changed**: Some config settings had their name adjusted (e.g. `Start Injecting After` -> `Injection Threshold`, `Remove Messages After Threshold` -> `Remove Messages`, `Do Not Inject` -> `Macro Only`, `Static Memory Mode` -> `Always Separate`). These changes have not affected their functionality.
+- **Changed**: Some radio configs have been changed to dropdowns to save space.
 - **Removed**: You can no longer configure a separate `Completion Preset` for summaries (it is instead determined by the `Connection Profile`).
 - **Fixed**: Fixed case where short-term messages would be included in the short-term context size calculation even if they were not injected due to injection delay.
 - **Fixed**: Properly escapes special characters in summary prefill.

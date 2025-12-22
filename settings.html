@@ -153,22 +153,13 @@
 
                 <label title="Summaries won't be injected until they are this far back in the chat (0 = start injecting summaries as soon as they are generated)." class="checkbox_label">
                     <input id="summary_injection_threshold" class="text_pole inline_setting" type="number" min="0" max="999" />
+                    <select id="summary_injection_threshold_type" class="text_pole inline_setting">
+                        <option value="messages" title="threshold is placed after this many messages">msg</option>
+                        <option value="tokens" title="threshold is placed after this many tokens (rounded down to the nearest message)">tk</option>
+                        <option value="context" title="threshold is placed after this percent of max context (rounded down to nearest message)">%</option>
+                    </select>
                     <span>Injection Threshold</span>
                 </label>
-                <div style="margin-left: 3em;">
-                    <label title="threshold is placed after this many messages">
-                        <input type="radio" name="summary_injection_threshold_type" value="messages" />
-                        <span>msg</span>
-                    </label>
-                    <label title="threshold is placed after this many tokens (rounded down to nearest message)">
-                        <input type="radio" name="summary_injection_threshold_type" value="tokens" />
-                        <span>tk</span>
-                    </label>
-                    <label title="threshold is placed after message tokens reach this percent of max context (rounded down to nearest message)">
-                        <input type="radio" name="summary_injection_threshold_type" value="percent" />
-                        <span>%</span>
-                    </label>
-                </div>
 
                 <label title="All messages after the injection threshold will be removed from context, leaving only the summaries." class="checkbox_label">
                     <input id="exclude_messages_after_threshold" type="checkbox">
@@ -179,10 +170,10 @@
                     <span>Keep Last User Msg</span>
                 </label>
 
-                <label title="Only update the injection threshold when any of the following criteria are met. By default, each new chat message pushes an older message past the injection threshold, changing the injected content and potentially invalidating your prompt cache. The following options will mitigate this, instead freezing the threshold's relative position in the chat until any of the chosen triggers occur. This means that injected content will update less frequently, keeping context unchanged for longer and thus reducing the frequency of cache invalidation. You can also manually trigger an update with /qm-update-injection-threshold" class="checkbox_label">
+                <label style="margin: 0.2em" title="Only update the injection threshold when any of the following criteria are met. By default, each new chat message pushes an older message past the injection threshold, changing the injected content and potentially invalidating your prompt cache. The following options will mitigate this, instead freezing the threshold's relative position in the chat until any of the chosen triggers occur. This means that injected content will update less frequently, keeping context unchanged for longer and thus reducing the frequency of cache invalidation. You can also manually trigger an update with /qm-update-injection-threshold">
                     <span>Update Triggers:</span>
                 </label>
-                <div>
+                <div style="margin-left: 1em">
                     <label title="Update when this many new messages are sent since last update (0 to disable)" style="margin-top: 0.5em;">
                         <input id="injection_threshold_update_trigger_messages" class="text_pole inline_setting" type="number" min="0" max="999" />
                         <span>new messages</span>
@@ -202,7 +193,7 @@
 
                 <!-- Short-term memory -->
                 <hr>
-                <h4 class="textAlignCenter">Short-term Memory Injection <i class="fa-solid fa-info-circle" title="Determines which messages are included in the short-term memory injection and where. If you change this and include messages that weren't summarized previously, you can either manually trigger a re-summarization or just wait until automatic summarization triggers."></i></h4>
+                <h4 class="textAlignCenter">Short-term Memory Injection <i class="fa-solid fa-info-circle" title="Determines which messages are included in the short-term memory injection and where it is placed in context."></i></h4>
 
                 <div class="flex-container justifyspacebetween alignitemscenter">
                     <button id="edit_short_term_memory_prompt" class="menu_button flex1" title="Edit the short-term memory prompt"><span>Edit</span></button>
@@ -234,57 +225,44 @@
                 <div class="flex-container justifyspacebetween">
                     <label title="The max amount of context that short-term memory can take up (percent or number of tokens).">
                         <input id="short_term_context_limit" class="text_pole widthUnset inline_setting" type="number" min="0" max="99999" />
+                        <select id="short_term_context_type" class="text_pole inline_setting">
+                           <option value="percent" title="Percent of max context">%</option>
+                           <option value="tokens" title="Number of tokens">tk</option>
+                        </select>
                         <span>Context (<span id="short_term_context_limit_display"></span> tk)</span>
                     </label>
-                    <div>
-                        <label>
-                            <input type="radio" name="short_term_context_type" value="percent" />
-                            <span>%</span>
-                        </label>
-                        <label>
-                            <input type="radio" name="short_term_context_type" value="tokens" />
-                            <span>tk</span>
-                        </label>
-                    </div>
                 </div>
 
                 <label class="checkbox_label" title="Include short-term when scanning for World Info triggers">
                     <input id="short_term_scan" type="checkbox" />
                     <span>Include in WI Scan</span>
                 </label>
-                <div class="radio_group">
-                    <label title="Will not be automatically injected. You can instead inject it manually with the {{qm-short-term-memory}} macro">
-                        <input type="radio" name="short_term_position" value="-1" />
-                        <span>Macro Only</span>
-                    </label>
-                    <label title="Will be automatically injected into your context before the main prompt">
-                        <input type="radio" name="short_term_position" value="2" />
-                        <span>Before main prompt</span>
-                    </label>
-                    <label title="Will be automatically injected into your context after the main prompt">
-                        <input type="radio" name="short_term_position" value="0" />
-                        <span>After main prompt</span>
-                    </label>
-                    <label class="flex-container alignItemsCenter" title="Will be automatically injected this many messages before the end of the chat">
-                        <input type="radio" name="short_term_position" value="1" />
-                        <span>In chat at depth</span>
-                        <input id="short_term_depth" class="text_pole inline_setting" type="number" min="0" max="99" />
-                        <span>as</span>
-                        <select id="short_term_role" class="text_pole inline_setting">
-                            <option value="0">System</option>
-                            <option value="1">User</option>
-                            <option value="2">Assistant</option>
-                        </select>
-                    </label>
-                </div>
+
+                <label title="Where short-term memories are injected" class="checkbox_label">
+                    <span>Location</span>
+                    <select id="short_term_position" class="text_pole inline_setting">
+                        <option value="-1" title="Not automatically injected. You can instead inject it manually with the {{qm-short-term-memory}} macro">Macro Only</option>
+                        <option value="2" title="Automatically injected into your context before the main prompt">Before Main Prompt</option>
+                        <option value="0" title="Automatically injected into your context after the main prompt">After Main Prompt</option>
+                        <option value="1" title="Automatically injected at a given depth within the chat">In Chat</option>
+                    </select>
+                </label>
+                <label title="At what point in the chat history to inject" class="checkbox_label">
+                    <span>Depth</span>
+                    <input id="short_term_depth" class="text_pole inline_setting" type="number" min="0" max="99" />
+                </label>
+                <label title="What role to use for the mid-chat injection" class="checkbox_label">
+                    <span>Role</span>
+                    <select id="short_term_role" class="text_pole inline_setting">
+                        <option value="0">System</option>
+                        <option value="1">User</option>
+                        <option value="2">Assistant</option>
+                    </select>
+                </label>
 
                 <!-- Long-term memory -->
                 <hr>
-                <label title="Long-term memories will be injected separately from short-term memories, regardless of chronological order. This is in contrast to the default behavior where summaries are kept in short-term memory until the context fills up, then dynamically moved to long-term memory if marked as such." class="checkbox_label">
-                    <input id="separate_long_term" type="checkbox">
-                    <span>Always Separate</span>
-                </label>
-                <h4 class="textAlignCenter">Long-Term Memory Injection <i class="fa-solid fa-info-circle" title="Determines where long-term messages are injected."></i></h4>
+                <h4 class="textAlignCenter">Long-Term Memory Injection <i class="fa-solid fa-info-circle" title="Determines where long-term messages are placed in context."></i></h4>
                 <div class="flex-container justifyspacebetween alignitemscenter">
                     <button id="edit_long_term_memory_prompt" class="menu_button flex1" title="Edit the long-term memory prompt"><span>Edit</span></button>
                     <!--<button id="preview_long_term_memory" class="menu_button fa-solid fa-eye interactable" title="Preview the long-term memory injection" tabindex="0"></button>-->
@@ -293,49 +271,44 @@
                 <div class="flex-container justifyspacebetween">
                     <label title="The max amount of the context that long-term memory can take up (percent or number of tokens).">
                         <input id="long_term_context_limit" class="text_pole widthUnset inline_setting" type="number" min="0" max="99999" />
+                        <select id="long_term_context_type" class="text_pole inline_setting">
+                           <option value="percent" title="Percent of max context">%</option>
+                           <option value="tokens" title="Number of tokens">tk</option>
+                        </select>
                         <span>Context (<span id="long_term_context_limit_display"></span> tk)</span>
                     </label>
-                   <div>
-                        <label>
-                            <input type="radio" name="long_term_context_type" value="percent" />
-                            <span>%</span>
-                        </label>
-                        <label>
-                            <input type="radio" name="long_term_context_type" value="tokens" />
-                            <span>tk</span>
-                        </label>
-                    </div>
-
                 </div>
                 <label class="checkbox_label" title="Include long-term memory when scanning for World Info triggers">
                     <input id="long_term_scan" type="checkbox" />
                     <span>Include in WI Scan</span>
                 </label>
-                <div class="radio_group">
-                    <label title="Will not be automatically injected into your context. You can instead inject it manually with the {{qm-long-term-memory}} macro">
-                        <input type="radio" name="long_term_position" value="-1" />
-                        <span>Macro Only</span>
-                    </label>
-                    <label title="Will be automatically injected into your context before the main prompt">
-                        <input type="radio" name="long_term_position" value="2" />
-                        <span>Before main prompt</span>
-                    </label>
-                    <label title="Will be automatically injected into your context after the main prompt">
-                        <input type="radio" name="long_term_position" value="0" />
-                        <span>After main prompt</span>
-                    </label>
-                    <label class="flex-container alignItemsCenter" title="Will be automatically injected this many messages before the end of the chat">
-                        <input type="radio" name="long_term_position" value="1" />
-                        <span>In chat at depth</span>
-                        <input id="long_term_depth" class="text_pole inline_setting" type="number" min="0" max="99" />
-                        <span>as</span>
-                        <select id="long_term_role" class="text_pole inline_setting">
-                            <option value="0">System</option>
-                            <option value="1">User</option>
-                            <option value="2">Assistant</option>
-                        </select>
-                    </label>
-                </div>
+
+                <label title="Long-term memories will be injected separately from short-term memories, regardless of chronological order. This is in contrast to the default behavior where summaries are kept in short-term memory until the context fills up, then dynamically moved to long-term memory if marked as such." class="checkbox_label">
+                    <input id="separate_long_term" type="checkbox">
+                    <span>Always Separate</span>
+                </label>
+
+                <label title="Where long-term memories are injected" class="checkbox_label">
+                    <span>Location</span>
+                    <select id="long_term_position" class="text_pole inline_setting">
+                        <option value="-1" title="Not automatically injected. You can instead inject it manually with the {{qm-long-term-memory}} macro">Macro Only</option>
+                        <option value="2" title="Automatically injected into your context before the main prompt">Before Main Prompt</option>
+                        <option value="0" title="Automatically injected into your context after the main prompt">After Main Prompt</option>
+                        <option value="1" title="Automatically injected at a given depth within the chat">In Chat</option>
+                    </select>
+                </label>
+                <label title="At what point in the chat history to inject" class="checkbox_label">
+                    <span>Depth</span>
+                    <input id="long_term_depth" class="text_pole inline_setting" type="number" min="0" max="99" />
+                </label>
+                <label title="What role to use for the mid-chat injection" class="checkbox_label">
+                    <span>Role</span>
+                    <select id="long_term_role" class="text_pole inline_setting">
+                        <option value="0">System</option>
+                        <option value="1">User</option>
+                        <option value="2">Assistant</option>
+                    </select>
+                </label>
 
 
                 <!-- Misc. -->

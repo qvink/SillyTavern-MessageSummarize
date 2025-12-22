@@ -38,19 +38,16 @@ select.inline_setting {
     margin: 0;
     padding: 0 5px;
     width: unset !important;
-    min-width: unset !important;
-    max-width: unset !important;
-    height: 1.2em;
-    line-height: 1em;
 }
 /* text input in a line of text */
 input.inline_setting {
-    margin: 0;
+    margin: 0 0 3px 0;
     padding: 0 0 0 5px;
-    width: unset !important;
-    min-width: unset !important;
-    max-width: unset !important;
-    height: 1em;
+    width: 3em;
+}
+/* When we use a checkbox label before the checkbox */
+label.checkbox_label > span:first-child {
+    margin-left: 0.2em;
 }
 
 /* buttons that need to grab your attention (Like the save button when there are unsaved changes) */
