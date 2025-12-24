@@ -1121,7 +1121,7 @@ function load_profile(profile=null) {
     }
 
     let settings = copy_settings(profile);  // copy the settings from the profile
-    if (!settings) {
+    if (!Object.keys(settings).length) {
         error("Profile not found: "+profile);
         return;
     }
@@ -1143,7 +1143,7 @@ function export_profile(profile=null) {
     }
 
     let settings = copy_settings(profile);  // copy the settings from the profile
-    if (!settings) {
+    if (!Object.keys(settings).length) {
         error("Profile not found: "+profile);
         return;
     }
@@ -4623,6 +4623,28 @@ function initialize_slash_commands() {
             reset_injection_threshold()
         },
         helpString: 'Force an update to the injection threshold, regardless of the "Update Delay" setting.'
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'qm-profile',
+        aliases: ['qvink-memory-profile'],
+        helpString: 'Switch to the given memory config profile.',
+        callback: (args, name) => {
+            if (name === "") {  // if not provided the state is an empty string, but we need it to be null to get the default behavior
+                name = null;
+            }
+
+            load_profile(name);
+            return "";
+        },
+
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'Name of the config profile to load',
+                isRequired: true,
+                typeList: ARGUMENT_TYPE.STRING,
+            }),
+        ],
     }));
 }
 

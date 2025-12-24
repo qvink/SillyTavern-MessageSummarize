@@ -136,6 +136,7 @@ Note: all commands have `/qvink-memory-` as an alias.
 - `/qm-stop-summarization`: stops any sequence of summarizations currently running. Same as clicking the "stop" button in the config or next to the progress bar.
 - `/qm-max-summary-tokens`: Get the max response tokens defined in the current completion preset used for summaries.
 - `/qm-update-injection-threshold`: Force an update to the injection threshold, regardless of the "Update Delay" setting.
+- `/qm-profile`: Switch to a memory config profile by name.
 
 ### Custom CSS
 You can easily customize the CSS for displayed memories by setting the following variables:

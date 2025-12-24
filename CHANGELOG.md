@@ -6,6 +6,7 @@
 - **New Feature**: `Connection Profiles` are now used for summaries **without switching** back and forth. 
 - **New Feature**: Parallel API requests now supported, configured by the `Parallel Summaries` setting. Auto-summary will block chat generation by default, but this can be disabled via the `Block Generation` toggle.
 - **New Feature**: New injection settings called `Update Triggers` which delays updating the injection threshold until certain criteria are met. This is useful for reducing how frequently your context cache is invalidated by adding summaries.
+- **New Feature**: New slash command `/qm-profile` to switch config profiles.
 - **Changed**: Some config settings had their name adjusted (e.g. `Start Injecting After` -> `Injection Threshold`, `Remove Messages After Threshold` -> `Remove Messages`, `Do Not Inject` -> `Macro Only`, `Static Memory Mode` -> `Always Separate`, `Message Length Threshold` -> `Minimum Length`). These changes have not affected their functionality.
 - **Changed**: Some radio configs have been changed to dropdowns to save space.
 - **Removed**: You can no longer configure a separate `Completion Preset` for summaries (it is instead determined by the `Connection Profile`).
