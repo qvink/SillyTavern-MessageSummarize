@@ -3611,8 +3611,8 @@ function get_injection_threshold() {
 
     // Check whether we have enough messages to update
     if (!criteria_met && messages_trigger > 0) {
-        criteria_met = (base_index - INJECTION_THRESHOLD_INDEX) >= message_trigger
-        if (criteria_met) debug(`Injection update triggered: New messages > ${message_trigger}`)
+        criteria_met = (base_index - INJECTION_THRESHOLD_INDEX) >= messages_trigger
+        if (criteria_met) debug(`Injection update triggered: New messages > ${messages_trigger}`)
     }
 
     // Check whether we have enough summaries ready to update
