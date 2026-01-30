@@ -2843,7 +2843,6 @@ class SummaryPromptEditInterface {
         await display_text_modal(t`Macro Preview:`+` {{${macro.name}}}`, result)
     }
 
-
     // creating the prompt
     async evaluate_script(macro, id, text=null) {
         // Evaluate any regex and scripts on the macro for the given message index
@@ -4002,19 +4001,29 @@ async function auto_summarize_chat(skip_initial_delay=true) {
 }
 
 // Event handling
-var last_message_swiped = null  // if an index, that was the last message swiped
-var last_message = null // if an index, that was the last message sent
+var last_message_swiped = null;  // if an index, that was the last message swiped
+var last_message = null; // if an index, that was the last message sent
+var just_opened = false;  // whether a chat has just been opened
 async function on_chat_event(event=null, data=null) {
     // When the chat is updated, check if the summarization should be triggered
     debug("Chat updated:", event, data)
 
     const context = getContext();
-    let index = data
+    let index = data;
 
     switch (event) {
         case 'chat_changed':  // chat was changed
             last_message_swiped = null;
             last_message = null;
+
+            // set timeout for a chat just being opened, blocking auto-summaries
+            just_opened = true;
+            setTimeout(() => {
+                just_opened = false;
+                debug("Just-opened chat timeout elapsed.")
+            }, 1000);
+
+
             reset_injection_threshold()
             auto_load_profile();  // load the profile for the current chat or character
             refresh_memory();  // refresh the memory state
@@ -4029,12 +4038,14 @@ async function on_chat_event(event=null, data=null) {
             if (!chat_enabled()) break;  // if chat is disabled, do nothing
             debug("Message deleted, refreshing memory")
             refresh_memory();
+            just_opened = false;
             break;
 
         case 'before_message':
             if (!chat_enabled()) break;  // if chat is disabled, do nothing
             if (!get_settings('auto_summarize')) break;  // if auto-summarize is disabled, do nothing
             if (!get_settings('auto_summarize_on_send')) break;  // if auto-summarize-on-send is disabled, skip
+            if (just_opened) break;  // don't auto-summarize if just opened the chat
 
             // If a dry run, skip. If in a group chat and type is undefined, skip (Generate() is run twice in group chats, and the first one has undefined type).
             // generations in regular chats also have undefined type though, so only skip if undefined in group chats.
@@ -4055,6 +4066,7 @@ async function on_chat_event(event=null, data=null) {
             last_message = null;
             if (!chat_enabled()) break;  // if chat is disabled, do nothing
             if (!get_settings('auto_summarize')) break;  // if auto-summarize is disabled, do nothing
+            if (just_opened) break;  // don't auto-summarize if just opened the chat
 
             // Summarize the chat if "include_user_messages" is enabled
             if (get_settings('include_user_messages')) {
@@ -4069,6 +4081,7 @@ async function on_chat_event(event=null, data=null) {
             if (!chat_enabled()) break;  // if chat is disabled, do nothing
             if (!context.groupId && context.characterId === undefined) break; // no characters or group selected
             if (streamingProcessor && !streamingProcessor.isFinished) break;  // Streaming in-progress
+            if (just_opened) break;  // don't auto-summarize if just opened the chat
 
             if (last_message_swiped === index) {  // this is a swipe
                 let message = context.chat[index];

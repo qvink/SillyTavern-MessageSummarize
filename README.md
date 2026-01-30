@@ -19,6 +19,7 @@ Requires ST v1.14.0 or above.
 - Summaries are automatically injected into the main prompt at two levels: `short-term` memory and `long-term` memory.
 - `Short-Term` memory rotates out the most recent message summaries automatically.
 - `Long-Term` memory stores summaries of **manually-marked** messages beyond the short-term limit (click the "brain" icon in the message menu).
+- This is a pure summarization-based memory extension, it does NOT use embeddings or RAG.
 
 ### Motivation
 The built-in `Summarize` extension has several problems:
