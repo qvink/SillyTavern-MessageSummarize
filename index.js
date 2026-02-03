@@ -4804,8 +4804,13 @@ jQuery(async function () {
     eventSource.on(event_types.MORE_MESSAGES_LOADED, refresh_memory);
     eventSource.on('groupSelected', set_character_enabled_button_states);
     eventSource.on(event_types.GROUP_UPDATED, set_character_enabled_button_states);
-    eventSource.on(event_types.SETTINGS_UPDATED, refresh_settings)  // refresh extension settings when ST settings change
     eventSource.on(event_types.GENERATION_STARTED, (type, stuff, dry) => on_chat_event('before_message', {'type': type, 'dry': dry}));
+
+    // Update extension config on these events
+    let update_events = [event_types.PRESET_CHANGED, event_types.CONNECTION_PROFILE_LOADED, event_types.CONNECTION_PROFILE_UPDATED]
+    for (let event of update_events) {
+        eventSource.on(event, refresh_settings)
+    }
 
     // Global Macros
     MacrosParser.registerMacro(short_memory_macro, () => get_short_memory());
