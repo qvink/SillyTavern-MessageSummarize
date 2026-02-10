@@ -199,10 +199,6 @@ function count_tokens(text, padding = 0) {
     let ctx = getContext();
     return ctx.getTokenCount(text, padding);
 }
-function get_context_size() {
-    // Get the current context size
-    return getMaxContextSize();
-}
 function get_last_prompt_size() {
     // return the size in tokens of the last message's prompt
     let last_index = getContext().chat.length - 1
@@ -227,7 +223,7 @@ function get_long_token_limit() {
     let long_term_context_limit = get_settings('long_term_context_limit');
     let number_type = get_settings('long_term_context_type')
     if (number_type === "percent") {
-        let context_size = get_context_size();
+        let context_size = get_chat_context_size();
         return Math.floor(context_size * long_term_context_limit / 100);
     } else {
         return long_term_context_limit
@@ -238,7 +234,7 @@ function get_short_token_limit() {
     let short_term_context_limit = get_settings('short_term_context_limit');
     let number_type = get_settings('short_term_context_type')
     if (number_type === "percent") {
-        let context_size = get_context_size();
+        let context_size = get_chat_context_size();
         return Math.floor(context_size * short_term_context_limit / 100);
     } else {
         return short_term_context_limit
@@ -516,18 +512,55 @@ function get_connection_profiles() {
     return getContext().extensionSettings.connectionManager.profiles
 
 }
-function get_profile_max_tokens() {
-    // get the maximum token length for the chosen profile's completion preset
-    let profile_id = get_summary_connection_profile()
-    let profile = get_connection_profile(profile_id)
-    let preset = getPresetManager().getCompletionPresetByName(profile.preset)
+function get_summary_completion_preset() {
+    // Return the completion preset for the current summary profile
 
+    // First get the preset name for the current summary connection profile
+    let id = get_summary_connection_profile()
+    let profile = get_connection_profile(id)
+    let name = profile.preset
+
+    let api = get_connection_profile_api()
+    let { presets, preset_names } = getPresetManager().getPresetList(api);
+
+    // Some APIs use an array of names, others use an object of {name: index}
+    let preset;
+    if (Array.isArray(preset_names)) {  // array of names
+        if (preset_names.includes(name)) {
+            preset = presets[preset_names.indexOf(name)];
+        }
+    } else {  // object of {names: index}
+        if (preset_names[name] !== undefined) {
+            preset = presets[preset_names[name]];
+        }
+    }
+
+    if (preset === undefined) {
+        console.error(`Preset ${preset} not found`);
+    }
+
+    return preset
+}
+function get_summary_max_tokens(preset) {
+    // Get the maximum token length for the chosen profile's completion preset
     // if the preset doesn't have a genamt use the current genamt.
     // it might be null if the preset has never been saved or was reset to default.
     // Also if you are using chat completion, it's openai_max_tokens instead.
+    if (preset === undefined) preset = get_summary_completion_preset()
     let max_tokens = preset?.genamt || preset?.openai_max_tokens || amount_gen
     debug("Got summary preset genamt: "+max_tokens)
     return max_tokens
+}
+function get_chat_context_size() {
+    // Get the current context size for chat
+    return getMaxContextSize();
+}
+function get_summary_context_size() {
+    // Get the context size for the current summary profile
+    let preset = get_summary_completion_preset()
+    let max_context = preset.max_length || preset.openai_max_context
+    let max_response = get_summary_max_tokens(preset)
+    return max_context - max_response
 }
 
 
@@ -3351,9 +3384,9 @@ class SummaryQueue {
         // get size of text
         let token_size = messages.reduce((acc, p) => acc + count_tokens(p.content), 0);
 
-        let context_size = get_context_size();
+        let context_size = get_summary_context_size();
         if (token_size > context_size) {
-            error(`Text (${token_size}) exceeds context size (${context_size}).`);
+            error(`Text to summarize (${token_size}) exceeds summary profile context size (${context_size}).`);
         }
 
         let result = await ctx.ConnectionManagerRequestService.sendRequest(profile, messages)
@@ -3572,7 +3605,7 @@ function get_injection_threshold() {
     let threshold_type = get_settings('summary_injection_threshold_type')
 
     let threshold = threshold_value  // if type is "messages"
-    if (threshold_type === 'percent') threshold_value = Math.floor(threshold_value * get_context_size() / 100)
+    if (threshold_type === 'percent') threshold_value = Math.floor(threshold_value * get_chat_context_size() / 100)
     if (threshold_type !== 'messages') {  // tokens or percent converted to tokens
         threshold = 0
         let tokens = 0
@@ -3632,7 +3665,7 @@ function get_injection_threshold() {
 
     // Check whether the previous prompt has reached the context percent criteria
     if (!criteria_met && context_trigger > 0) {
-        criteria_met = (100*get_last_prompt_size()/get_context_size()) >= context_trigger
+        criteria_met = (100*get_last_prompt_size()/get_chat_context_size()) >= context_trigger
         if (criteria_met) debug(`Injection update triggered: Previous prompt context > ${context_trigger}%`)
     }
 
@@ -4624,7 +4657,7 @@ function initialize_slash_commands() {
         name: 'qm-max-summary-tokens',
         aliases: ['qvink-memory-max-summary-tokens'],
         callback: async (args) => {
-            return String(get_profile_max_tokens());
+            return String(get_summary_max_tokens());
         },
         helpString: 'Return the max tokens allowed for summarization given the summary connection profile.'
     }));

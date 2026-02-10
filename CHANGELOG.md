@@ -15,6 +15,7 @@
 - **Fixed**: Fixed bug where "Restore Profile" button didn't visually update memories in the chat.
 - **Fixed**: Fixed new chats auto-summarizing the first message when opening them.
 - **Fixed**: Removed unnecessary config settings update to reduce lag in some cases.
+- **Fixed**: Fixed edge case when retrieving the completion preset context size for the summary connection profile.
 
 #### v1.2.16
 - **ST Version Requirement**: You must be on ST v1.13.5
