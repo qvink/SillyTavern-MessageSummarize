@@ -132,7 +132,7 @@ Note: all commands have `/qvink-memory-` as an alias.
 - `/qm-toggle-exclude`: Toggles the manual exclusion of the memory for the given message index. Same as clicking the "Force Exclude" button in the message button menu.
 - `/qm-get`: Get the memory associated with a message or range of messages. Defaults to the most recent message.
 - `/qm-set`: Set the memory associated with a message to the given text.
-- `/qm-summarize`: Summarizes the nth message in the chat (default to most recent message). Same as clicking the "Quote" icon in the message button menu.
+- `/qm-summarize`: Summarizes a message by index or a range of messages (defaults to most recent message). Optionally disable the progress bar.
 - `/qm-summarize-chat`: Performs a single auto-summarization on the chat, even if auto-summarization is disabled. This takes into account the auto-summarization inclusion criteria and message limit.
 - `/qm-stop-summarization`: stops any sequence of summarizations currently running. Same as clicking the "stop" button in the config or next to the progress bar.
 - `/qm-max-summary-tokens`: Get the max response tokens defined in the current completion preset used for summaries.

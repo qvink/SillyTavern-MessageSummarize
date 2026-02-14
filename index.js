@@ -519,6 +519,7 @@ function get_summary_completion_preset() {
     let id = get_summary_connection_profile()
     let profile = get_connection_profile(id)
     let name = profile.preset
+    // TODO what happens when no preset selected? Return current one.
 
     let api = get_connection_profile_api()
     let { presets, preset_names } = getPresetManager().getPresetList(api);
@@ -558,7 +559,7 @@ function get_chat_context_size() {
 function get_summary_context_size() {
     // Get the context size for the current summary profile
     let preset = get_summary_completion_preset()
-    let max_context = preset.max_length || preset.openai_max_context
+    let max_context = preset?.max_length || preset?.openai_max_context
     let max_response = get_summary_max_tokens(preset)
     return max_context - max_response
 }
@@ -3137,7 +3138,7 @@ class SummaryQueue {
         this.summarization_delay_timeout = null  // the set_timeout object for the summarization delay
         this.summarization_delay_resolve = null
         this.first_summary = false  // flag set when an assistant message is sent
-        this.show_progress = true  // Whether to show the progress bar
+        this.show_progress = false  // Whether to show the progress bar
         this.current_progress = 0
         this.current_task_count = 0
         this.current_indexes = {}  // set of current indexes being summarized (used to filter duplicates)
@@ -4380,6 +4381,25 @@ function set_character_enabled_button_states() {
         }
     }
 }
+function get_message_indexes_from_command_range(value) {
+    // Given a string input value (from a slash command), attempt to interpret it as an index or range of messages
+    let range;
+    if (value === "") {
+        range = {start: chat.length-1, end: chat.length-1}
+    } else {
+        range = stringToRange(value, 0, chat.length - 1);
+        if (!range) {
+            error(`Invalid message number or range "${value}". Latest message is #${chat.length-1}.`);
+            return
+        }
+    }
+
+    let indexes = []
+    for (let i=range.start; i<=range.end; i++) {
+        indexes.push(i)
+    }
+    return indexes
+}
 function initialize_slash_commands() {
     let ctx = getContext()
     let SlashCommandParser = ctx.SlashCommandParser
@@ -4539,21 +4559,8 @@ function initialize_slash_commands() {
         callback: async (args, value) => {
             let chat = getContext().chat
             let separator = args.separator ?? get_settings('summary_injection_separator')
-            let range;
-            if (value === "") {
-                range = {start: chat.length-1, end: chat.length-1}
-            } else {
-                range = stringToRange(value, 0, chat.length - 1);
-                if (!range) {
-                    error(`Invalid message number or range "${value}". Latest message is #${chat.length-1}.`);
-                    return "";
-                }
-            }
-
-            let indexes = []
-            for (let i=range.start; i<=range.end; i++) {
-                indexes.push(i)
-            }
+            let indexes = get_message_indexes_from_command_range(value)
+            if (indexes === undefined) return ""
             return concatenate_summaries(indexes, separator)
         },
         helpString: 'Return the memory associated with a given message index or range. If no index given, assumes the most recent message.',
@@ -4617,17 +4624,29 @@ function initialize_slash_commands() {
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'qm-summarize',
         aliases: ['qvink-memory-summarize'],
-        callback: async (args, index) => {
-            if (index === "") index = null  // if not provided the index is an empty string, but we need it to be null to get the default behavior
-            await summaryQueue.summarize(index, true, false, false);  // summarize the message
+        callback: async (args, value) => {
+            if (args.show_progress === undefined) args.show_progress = true
+            else args.show_progress = args.show_progress === "true"
+            let indexes = get_message_indexes_from_command_range(value)
+            if (indexes !== undefined) {
+                await summaryQueue.summarize(indexes, true, args.show_progress, false);  // summarize the message
+            }
             return "";
         },
-        helpString: 'Summarize the given message index (defaults to most recent applicable message).',
+        helpString: 'Summarize the given message(s)',
         unnamedArgumentList: [
             SlashCommandArgument.fromProps({
-                description: 'Index of the message to summarize',
+                description: 'Index of a message or range of messages to summarize. Default is the most recent applicable message.',
                 isRequired: false,
-                typeList: ARGUMENT_TYPE.NUMBER,
+                typeList: [ARGUMENT_TYPE.NUMBER, ARGUMENT_TYPE.RANGE]
+            }),
+        ],
+        namedArgumentList: [
+            SlashCommandNamedArgument.fromProps({
+                name: 'show_progress',
+                description: 'Whether to show the progress bar. Default true.',
+                isRequired: false,
+                typeList: [ARGUMENT_TYPE.BOOLEAN]
             }),
         ],
     }));
@@ -4638,7 +4657,8 @@ function initialize_slash_commands() {
         helpString: 'Summarize the chat using the auto-summarization criteria, even if auto-summarization is off.',
         callback: async (args, limit) => {
             let indexes = collect_messages_to_auto_summarize();
-            await summaryQueue.summarize(indexes);
+            let show_progress = get_settings('auto_summarize_progress');
+            await summaryQueue.summarize(indexes, true, show_progress);
             return ""
         },
     }));
