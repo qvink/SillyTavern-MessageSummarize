@@ -28,7 +28,6 @@ import {
     chat_metadata,
 } from '../../../../script.js';
 import { getContext, extension_settings, saveMetadataDebounced} from '../../../extensions.js';
-import { getPresetManager } from '../../../preset-manager.js'
 import { formatInstructModeChat, formatInstructModePrompt } from '../../../instruct-mode.js';
 import { selected_group, openGroupId } from '../../../group-chats.js';
 import { loadMovingUIState, power_user } from '../../../power-user.js';
@@ -457,15 +456,31 @@ function check_connection_profiles_active() {
     // detect whether the connection profiles extension is active
     return !getContext().extensionSettings.disabledExtensions.includes('connection-manager')
 }
-function get_current_connection_profile() {
+function get_connection_profiles() {
+    // Get a list of available connection profiles
+    if (!check_connection_profiles_active()) return [];  // if the extension isn't active, return
+    return getContext().extensionSettings.connectionManager.profiles
+
+}
+function verify_connection_profile(id) {
+    // check if the given connection profile ID is valid.
     if (!check_connection_profiles_active()) return;  // if the extension isn't active, return
-    return getContext().extensionSettings.connectionManager.selectedProfile;
+    if (id === "") return true;  // no profile selected, always valid
+    let data = get_connection_profile_data(id)  // found an existing profile for this ID
+    if (data) return true
+    return false
+}
+function get_connection_profile_data(id) {
+    // Return the info for the given connection profile ID
+    let data = get_connection_profiles().find((p) => p.id === id);
+    if (data) return data
+    error(`Connection profile not found for ID: ${id}`)
 }
 function get_connection_profile_api(id) {
     // Get the API for the given connection profile ID. If not given, get the current summary profile.
     if (!check_connection_profiles_active()) return;  // if the extension isn't active, return
     if (id === undefined) id = get_summary_connection_profile()
-    let data = get_connection_profile(id)
+    let data = get_connection_profile_data(id)
 
     // If the API type isn't defined, it might be excluded from the connection profile. Assume based on mode.
     if (data.api === undefined) {
@@ -482,7 +497,7 @@ function get_connection_profile_api(id) {
     return CONNECT_API_MAP[data.api].selected
 }
 function get_summary_connection_profile() {
-    // get the current connection profile ID OR the default if it isn't valid for the current API
+    // get the summary connection profile ID OR the default if it isn't valid for the current API
     let id = get_settings('connection_profile');
 
     // If none selected, invalid, or connection profiles not active, use the current profile
@@ -492,48 +507,38 @@ function get_summary_connection_profile() {
 
     return id
 }
-function verify_connection_profile(id) {
-    // check if the given connection profile ID is valid.
+function get_current_connection_profile() {
+    // Return the ID of the currently selected connection profile for chatting
     if (!check_connection_profiles_active()) return;  // if the extension isn't active, return
-    if (id === "") return true;  // no profile selected, always valid
-    let data = get_connection_profile(id)  // found an existing profile for this ID
-    if (data) return true
-    return false
-}
-function get_connection_profile(id) {
-    // Return the info for the given connection profile ID
-    let data = get_connection_profiles().find((p) => p.id === id);
-    if (data) return data
-    error(`Connection profile not found for ID: ${id}`)
-}
-function get_connection_profiles() {
-    // Get a list of available connection profiles
-    if (!check_connection_profiles_active()) return [];  // if the extension isn't active, return
-    return getContext().extensionSettings.connectionManager.profiles
-
+    return getContext().extensionSettings.connectionManager.selectedProfile;
 }
 function get_summary_completion_preset() {
     // Return the completion preset for the current summary profile
+    let presetManager = getContext().getPresetManager()
 
     // First get the preset name for the current summary connection profile
     let id = get_summary_connection_profile()
-    let profile = get_connection_profile(id)
-    let name = profile.preset
-    // TODO what happens when no preset selected? Return current one.
-
-    let api = get_connection_profile_api()
-    let { presets, preset_names } = getPresetManager().getPresetList(api);
-
-    // Some APIs use an array of names, others use an object of {name: index}
+    let profile = get_connection_profile_data(id)
     let preset;
-    if (Array.isArray(preset_names)) {  // array of names
-        if (preset_names.includes(name)) {
-            preset = presets[preset_names.indexOf(name)];
+    if (profile.preset) {
+        debug("Summary connection profile has a preset: ", profile.preset)
+        let name = profile.preset
+        let api = get_connection_profile_api(id)
+        let { presets, preset_names } = presetManager.getPresetList(api);
+        // Some APIs use an array of names, others use an object of {name: index}
+
+        if (Array.isArray(preset_names)) {  // array of names
+            if (preset_names.includes(name)) {
+                preset = presets[preset_names.indexOf(name)];
+            }
+        } else {  // object of {names: index}
+            if (preset_names[name] !== undefined) {
+                preset = presets[preset_names[name]];
+            }
         }
-    } else {  // object of {names: index}
-        if (preset_names[name] !== undefined) {
-            preset = presets[preset_names[name]];
-        }
+    } else {  // A preset is not given for this connection profile, so use the currently selected one as a backup.
+        debug("No preset found for summary connection profile. Using current as backup.")
+        preset = presetManager.getPresetSettings(presetManager.getSelectedPresetName())
     }
 
     if (preset === undefined) {
@@ -549,7 +554,7 @@ function get_summary_max_tokens(preset) {
     // Also if you are using chat completion, it's openai_max_tokens instead.
     if (preset === undefined) preset = get_summary_completion_preset()
     let max_tokens = preset?.genamt || preset?.openai_max_tokens || amount_gen
-    debug("Got summary preset genamt: "+max_tokens)
+    debug("Got summary preset response token limit: ", max_tokens)
     return max_tokens
 }
 function get_chat_context_size() {
@@ -561,7 +566,9 @@ function get_summary_context_size() {
     let preset = get_summary_completion_preset()
     let max_context = preset?.max_length || preset?.openai_max_context
     let max_response = get_summary_max_tokens(preset)
-    return max_context - max_response
+    let context = max_context - max_response
+    debug("Got summary preset effective context size: ", context)
+    return context
 }
 
 
@@ -3387,7 +3394,7 @@ class SummaryQueue {
 
         let context_size = get_summary_context_size();
         if (token_size > context_size) {
-            error(`Text to summarize (${token_size}) exceeds summary profile context size (${context_size}).`);
+            error(`Text to summarize (${token_size}) exceeds summary context size (${context_size}).`);
         }
 
         let result = await ctx.ConnectionManagerRequestService.sendRequest(profile, messages)
@@ -3409,7 +3416,7 @@ function parse_reasoning(message, summary=null, reasoning=null, prefill=null) {
 
     // stick the prefill on the front and try to parse reasoning
     let profile_id = get_summary_connection_profile()
-    let profile_data = get_connection_profile(profile_id)
+    let profile_data = get_connection_profile_data(profile_id)
     let template_name = profile_data["reasoning-template"]
     if (!template_name) {
         debug("No reasoning template specified in profile")
