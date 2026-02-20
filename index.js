@@ -78,6 +78,9 @@ const forget_button_class = `${MODULE_NAME}_forget_button`
 var STOP_SUMMARIZATION = false  // flag toggled when stopping summarization
 var SUMMARIZATION_DELAY_TIMEOUT = null  // the set_timeout object for the summarization delay
 var SUMMARIZATION_DELAY_RESOLVE = null
+const RUNTIME_ONLY_MESSAGE_KEYS = new Set(['include', 'lagging'])
+const LOCAL_TOKEN_CACHE_LIMIT = 3000
+const local_token_count_cache = new Map()
 
 // Settings
 const default_prompt = `You are a summarization assistant. Summarize the given fictional narrative in a single, very short and concise statement of fact.
@@ -197,8 +200,25 @@ const toast_debounced = debounce(toast, 500);
 const saveChatDebounced = debounce(() => getContext().saveChat(), debounce_timeout.relaxed);
 function count_tokens(text, padding = 0) {
     // count the number of tokens in a text
+    if (typeof text !== 'string' || text.length === 0) {
+        return 0
+    }
+
+    let key = `${main_api}:${padding}:${getStringHash(text)}:${text.length}`
+    if (local_token_count_cache.has(key)) {
+        return local_token_count_cache.get(key)
+    }
+
     let ctx = getContext();
-    return ctx.getTokenCount(text, padding);
+    let token_count = ctx.getTokenCount(text, padding);
+    local_token_count_cache.set(key, token_count)
+
+    // Avoid unbounded growth.
+    if (local_token_count_cache.size > LOCAL_TOKEN_CACHE_LIMIT) {
+        local_token_count_cache.clear()
+    }
+
+    return token_count;
 }
 function get_context_size() {
     // Get the current context size
@@ -238,7 +258,7 @@ function get_current_character_identifier() {
 
     // Otherwise get the avatar image path of the current character
     let index = context.characterId;
-    if (!index) {  // not a character
+    if (index === undefined || index === null) {  // not a character
         return null;
     }
 
@@ -391,7 +411,7 @@ async function get_summary_preset() {
 async function set_preset(name) {
     if (name === get_current_preset()) return;  // If already using the current preset, return
 
-    if (!check_preset_valid()) return;  // don't set an invalid preset
+    if (!await check_preset_valid()) return;  // don't set an invalid preset
 
     // Set the completion preset
     debug(`Setting completion preset to ${name}`)
@@ -1255,12 +1275,12 @@ function new_profile() {
 }
 async function delete_profile() {
     // Delete the current profile
-    if (get_settings('profiles').length === 1) {
+    let profiles = get_settings('profiles') ?? {};
+    if (Object.keys(profiles).length === 1) {
         error("Cannot delete your last profile");
         return;
     }
     let profile = get_settings('profile');
-    let profiles = get_settings('profiles');
 
     let result = await getContext().Popup.show.confirm(`Permanently delete profile: "${profile}"`, "", {okButton: 'Delete', cancelButton: 'Cancel'});
     if (!result) {
@@ -1273,20 +1293,13 @@ async function delete_profile() {
     toast(`Deleted Configuration Profile: \"${profile}\"`, "success");
 
     // remove any references to this profile connected to characters or chats
-    let character_profiles = get_settings('character_profiles')
-    let chat_profiles = get_settings('chat_profiles')
+    let character_profiles = get_settings('character_profiles') ?? {}
     for (let [id, name] of Object.entries(character_profiles)) {
         if (name === profile) {
             delete character_profiles[id]
         }
     }
-    for (let [id, name] of Object.entries(chat_profiles)) {
-        if (name === profile) {
-            delete chat_profiles[id]
-        }
-    }
     set_settings('character_profiles', character_profiles)
-    set_settings('chat_profiles', chat_profiles)
 
     auto_load_profile()
 }
@@ -3115,6 +3128,12 @@ class SummaryPromptEditInterface {
 // Message functions
 function set_data(message, key, value) {
     // store information on the message object
+    if (!message) return;
+
+    if (message?.extra?.[MODULE_NAME]?.[key] === value) {
+        return;
+    }
+
     if (!message.extra) {
         message.extra = {};
     }
@@ -3124,9 +3143,14 @@ function set_data(message, key, value) {
 
     message.extra[MODULE_NAME][key] = value;
 
+    // transient data should not trigger chat saves or swipe metadata writes
+    if (RUNTIME_ONLY_MESSAGE_KEYS.has(key)) {
+        return;
+    }
+
     // Also save on the current swipe info if present
     let swipe_index = message.swipe_id
-    if (swipe_index && message.swipe_info?.[swipe_index]) {
+    if (swipe_index !== undefined && swipe_index !== null && message.swipe_info?.[swipe_index]) {
         if (!message.swipe_info[swipe_index].extra) {
             message.swipe_info[swipe_index].extra = {};
         }
@@ -3230,7 +3254,7 @@ async function remember_message_toggle(indexes=null, value=null) {
 
         let memory = get_data(message, 'memory')
         if (value && !memory) {
-            summarize.push()
+            summarize.push(index)
         }
         debug(`Set message ${index} remembered status: ${value}`);
     }
@@ -3315,7 +3339,7 @@ function check_message_exclusion(message) {
     }
 
     // check if it's a narrator message
-    if (!get_settings('include_narrator_messages') && message.extra.type === system_message_types.NARRATOR) {
+    if (!get_settings('include_narrator_messages') && message.extra?.type === system_message_types.NARRATOR) {
         return false
     }
 
@@ -3333,7 +3357,7 @@ function check_message_exclusion(message) {
 
     return true;
 }
-function update_message_inclusion_flags() {
+function update_message_inclusion_flags(update_visuals = true) {
     // Update all messages in the chat, flagging them as short-term or long-term memories to include in the injection.
     // This has to be run on the entire chat since it needs to take the context limits into account.
     let context = getContext();
@@ -3347,16 +3371,18 @@ function update_message_inclusion_flags() {
     let keep_last_user_message = get_settings('keep_last_user_message')
     let first_to_inject = chat.length - injection_threshold
     let last_user_message_identified = false
+    let short_token_limit = get_short_token_limit()
+    let long_token_limit = get_long_token_limit()
+    let separator = get_settings('summary_injection_separator')
+    let separator_token_size = count_tokens(separator)
 
     // iterate through the chat in reverse order and mark the messages that should be included in short-term and long-term memory
     let short_limit_reached = false;
     let long_limit_reached = false;
     let end = chat.length - 1;
 
-    let short_summary = ""  // total concatenated summary so far
-    let long_summary = ""  // temp summary storage to check token length
-    let new_short_summary = ""
-    let new_long_summary = ""
+    let short_token_size = 0
+    let long_token_size = 0
 
     for (let i = end; i >= 0; i--) {
         let message = chat[i];
@@ -3388,13 +3414,12 @@ function update_message_inclusion_flags() {
 
             // consider this for short term memories as long as we aren't separating long-term or (if we are), this isn't a long-term
             if (!separate_long_term || !get_data(message, 'remember')) {
-                new_short_summary = concatenate_summary(short_summary, message)  // concatenate this summary
-                let short_token_size = count_tokens(new_short_summary);
-                if (short_token_size > get_short_token_limit()) {  // over context limit
+                let message_token_size = count_tokens(memory) + separator_token_size
+                if (short_token_size + message_token_size > short_token_limit) {  // over context limit
                     short_limit_reached = true;
                 } else {  // under context limit
                     set_data(message, 'include', 'short');
-                    short_summary = new_short_summary
+                    short_token_size += message_token_size
                     continue
                 }
             }
@@ -3403,13 +3428,18 @@ function update_message_inclusion_flags() {
         // if the short-term limit has been reached (or we are separating), check the long-term limit.
         let remember = get_data(message, 'remember');
         if (!long_limit_reached && remember) {  // long-term limit hasn't been reached yet and the message was marked to be remembered
-            new_long_summary = concatenate_summary(long_summary, message)  // concatenate this summary
-            let long_token_size = count_tokens(new_long_summary);
-            if (long_token_size > get_long_token_limit()) {  // over context limit
+            let memory = get_memory(message)
+            if (!memory) {
+                set_data(message, 'include', null);
+                continue
+            }
+
+            let message_token_size = count_tokens(memory) + separator_token_size
+            if (long_token_size + message_token_size > long_token_limit) {  // over context limit
                 long_limit_reached = true;
             } else {
                 set_data(message, 'include', 'long');  // mark the message as long-term
-                long_summary = new_long_summary
+                long_token_size += message_token_size
                 continue
             }
         }
@@ -3418,7 +3448,9 @@ function update_message_inclusion_flags() {
         set_data(message, 'include', null);
     }
 
-    update_all_message_visuals()
+    if (update_visuals) {
+        update_all_message_visuals()
+    }
 }
 function concatenate_summary(existing_text, message, separator=null) {
     // given an existing text of concatenated summaries, concatenate the next one onto it
@@ -3489,12 +3521,49 @@ function get_short_memory() {
     return ctx.substituteParamsExtended(template, {[generic_memories_macro]: text});
 }
 
+function get_memory_injections(update_visuals = true) {
+    // Build the short/long memory injection text and positions.
+    update_message_inclusion_flags(update_visuals)
+
+    let long_injection = get_long_memory();
+    let short_injection = get_short_memory();
+    let long_term_position = get_settings('long_term_position')
+    let short_term_position = get_settings('short_term_position')
+
+    // if using text completion, we need to wrap it in a system prompt
+    if (main_api !== 'openai') {
+        if (long_term_position !== extension_prompt_types.IN_CHAT && long_injection.length) long_injection = formatInstructModeChat("", long_injection, false, true)
+        if (short_term_position !== extension_prompt_types.IN_CHAT && short_injection.length) short_injection = formatInstructModeChat("", short_injection, false, true)
+    }
+
+    return {long_injection, short_injection, long_term_position, short_term_position}
+}
+function set_memory_prompts(ctx, long_injection, short_injection, long_term_position, short_term_position) {
+    // inject the memories into the templates, if they exist
+    ctx.setExtensionPrompt(`${MODULE_NAME}_long`,  long_injection,  long_term_position, get_settings('long_term_depth'), get_settings('long_term_scan'), get_settings('long_term_role'));
+    ctx.setExtensionPrompt(`${MODULE_NAME}_short`, short_injection, short_term_position, get_settings('short_term_depth'), get_settings('short_term_scan'), get_settings('short_term_role'));
+}
+function refresh_memory_internal(update_visuals = true) {
+    let ctx = getContext();
+    if (!chat_enabled()) { // if chat not enabled, remove the injections
+        ctx.setExtensionPrompt(`${MODULE_NAME}_long`, "");
+        ctx.setExtensionPrompt(`${MODULE_NAME}_short`, "");
+        return;
+    }
+
+    debug(update_visuals ? "Refreshing memory" : "Refreshing memory (no visuals)")
+
+    let {long_injection, short_injection, long_term_position, short_term_position} = get_memory_injections(update_visuals)
+    set_memory_prompts(ctx, long_injection, short_injection, long_term_position, short_term_position)
+    return `${long_injection}\n\n...\n\n${short_injection}`  // return the concatenated memory text
+}
+
 // Add an interception function to reduce the number of messages injected normally
 // This has to match the manifest.json "generate_interceptor" key
 globalThis.memory_intercept_messages = function (chat, _contextSize, _abort, type) {
     if (!chat_enabled()) return;   // if memory disabled, do nothing
     if (!get_settings('exclude_messages_after_threshold')) return  // if not excluding any messages, do nothing
-    refresh_memory()
+    refresh_memory_internal(false)
 
     let start = chat.length-1
     if (type === 'continue') start--  // if a continue, keep the most recent message
@@ -3504,11 +3573,15 @@ globalThis.memory_intercept_messages = function (chat, _contextSize, _abort, typ
 
     // Remove any messages that have summaries injected
     for (let i=start; i >= 0; i--) {
-        delete chat[i].extra.ignore_formatting
-        let message = chat[i]
+        let source_message = chat[i] ?? {}
+        let message = {
+            ...source_message,
+            extra: {...(source_message.extra ?? {})},
+        }
+        delete message.extra.ignore_formatting
         let lagging = get_data(message, 'lagging')  // The message should be kept
-        chat[i] = structuredClone(chat[i])  // keep changes temporary for this generation
-        chat[i].extra[IGNORE_SYMBOL] = !lagging
+        message.extra[IGNORE_SYMBOL] = !lagging
+        chat[i] = message  // keep changes temporary for this generation
     }
 };
 
@@ -3517,6 +3590,7 @@ globalThis.memory_intercept_messages = function (chat, _contextSize, _abort, typ
 async function summarize_messages(indexes=null, show_progress=true, skip_initial_delay=true) {
     // Summarize the given list of message indexes (or a single index)
     let ctx = getContext();
+    let chat = ctx.chat
 
     if (indexes === null) {  // default to the mose recent message, min 0
         indexes = [Math.max(chat.length - 1, 0)]
@@ -3532,76 +3606,96 @@ async function summarize_messages(indexes=null, show_progress=true, skip_initial
     // set stop flag to false just in case
     STOP_SUMMARIZATION = false
 
-    // optionally block user from sending chat messages while summarization is in progress
-    if (get_settings('block_chat')) {
-        ctx.deactivateSendButtons();
-    }
-
-    // Save the current completion preset (must happen before you set the connection profile because it changes the preset)
     let summary_preset = get_settings('completion_preset');
-    let current_preset = await get_current_preset();
-
-    // Get the current connection profile
     let summary_profile = get_settings('connection_profile');
-    let current_profile = await get_current_connection_profile()
-
-    // set the completion preset and connection profile for summarization (preset must be set after connection profile)
-    await set_connection_profile(summary_profile);
-    await set_preset(summary_preset);
-
+    let current_preset = undefined;
+    let current_profile = undefined;
+    let send_buttons_disabled = false
     let n = 0;
-    for (let i of indexes) {
-        if (show_progress) progress_bar('summarize', n+1, indexes.length, "Summarizing");
-
-        // check if summarization was stopped by the user
-        if (STOP_SUMMARIZATION) {
-            log('Summarization stopped');
-            break;
+    try {
+        // optionally block user from sending chat messages while summarization is in progress
+        if (get_settings('block_chat')) {
+            ctx.deactivateSendButtons();
+            send_buttons_disabled = true
         }
 
-        // Wait for time delay if set (only delay first if initial delay set)
-        let time_delay = get_settings('summarization_time_delay')
-        if (time_delay > 0 && (n > 0 || (n === 0 && !skip_initial_delay))) {
-            debug(`Delaying generation by ${time_delay} seconds`)
-            if (show_progress) progress_bar('summarize', null, null, "Delaying")
-            await new Promise((resolve) => {
-                SUMMARIZATION_DELAY_TIMEOUT = setTimeout(resolve, time_delay * 1000)
-                SUMMARIZATION_DELAY_RESOLVE = resolve  // store the resolve function to call when cleared
-            });
+        // Save the current completion preset (must happen before you set the connection profile because it changes the preset)
+        current_preset = await get_current_preset();
 
-            // check if summarization was stopped by the user during the delay
+        // Get the current connection profile
+        current_profile = await get_current_connection_profile()
+
+        // set the completion preset and connection profile for summarization (preset must be set after connection profile)
+        await set_connection_profile(summary_profile);
+        await set_preset(summary_preset);
+
+        for (let i of indexes) {
+            if (show_progress) progress_bar('summarize', n+1, indexes.length, "Summarizing");
+
+            // check if summarization was stopped by the user
             if (STOP_SUMMARIZATION) {
                 log('Summarization stopped');
                 break;
             }
+
+            // Wait for time delay if set (only delay first if initial delay set)
+            let time_delay = get_settings('summarization_time_delay')
+            if (time_delay > 0 && (n > 0 || (n === 0 && !skip_initial_delay))) {
+                debug(`Delaying generation by ${time_delay} seconds`)
+                if (show_progress) progress_bar('summarize', null, null, "Delaying")
+                await new Promise((resolve) => {
+                    SUMMARIZATION_DELAY_TIMEOUT = setTimeout(resolve, time_delay * 1000)
+                    SUMMARIZATION_DELAY_RESOLVE = resolve  // store the resolve function to call when cleared
+                });
+
+                // check if summarization was stopped by the user during the delay
+                if (STOP_SUMMARIZATION) {
+                    log('Summarization stopped');
+                    break;
+                }
+            }
+
+            await summarize_message(i);
+            n += 1;
+        }
+    } finally {
+        SUMMARIZATION_DELAY_TIMEOUT = null
+        SUMMARIZATION_DELAY_RESOLVE = null
+
+        // restore the completion preset and connection profile
+        if (current_profile !== undefined) {
+            try {
+                await set_connection_profile(current_profile);
+            } catch (e) {
+                console.error(`[${MODULE_NAME_FANCY}] Failed to restore connection profile`, e)
+            }
+        }
+        if (current_preset !== undefined) {
+            try {
+                await set_preset(current_preset);
+            } catch (e) {
+                console.error(`[${MODULE_NAME_FANCY}] Failed to restore completion preset`, e)
+            }
         }
 
-        await summarize_message(i);
-        n += 1;
+        // remove the progress bar
+        if (show_progress) remove_progress_bar('summarize')
+
+        if (STOP_SUMMARIZATION) {  // check if summarization was stopped
+            STOP_SUMMARIZATION = false  // reset the flag
+        } else {
+            debug(`Messages summarized: ${n}`)
+        }
+
+        if (send_buttons_disabled) {
+            ctx.activateSendButtons();
+        }
+
+        refresh_memory()
+
+        // Update the memory state interface if it's open
+        memoryEditInterface.update_table()
     }
-
-
-    // restore the completion preset and connection profile
-    await set_connection_profile(current_profile);
-    await set_preset(current_preset);
-
-    // remove the progress bar
-    if (show_progress) remove_progress_bar('summarize')
-
-    if (STOP_SUMMARIZATION) {  // check if summarization was stopped
-        STOP_SUMMARIZATION = false  // reset the flag
-    } else {
-        debug(`Messages summarized: ${indexes.length}`)
-    }
-
-    if (get_settings('block_chat')) {
-        ctx.activateSendButtons();
-    }
-
-    refresh_memory()
-
-    // Update the memory state interface if it's open
-    memoryEditInterface.update_table()
 }
 async function summarize_message(index) {
     // Summarize a message given the chat index, replacing any existing memories
@@ -3620,7 +3714,7 @@ async function summarize_message(index) {
     memoryEditInterface.update_message_visuals(index, null, false, "Summarizing...")
 
     // If the most recent message, scroll to the bottom to get the summary in view (affected by ST settings)
-    if (index === chat.length - 1) {
+    if (index === context.chat.length - 1) {
         scrollChatToBottom();
     }
 
@@ -3689,7 +3783,7 @@ async function summarize_message(index) {
     memoryEditInterface.update_message_visuals(index, null, false)
 
     // If the most recent message, scroll to the bottom
-    if (index === chat.length - 1) {
+    if (index === context.chat.length - 1) {
         scrollChatToBottom()
     }
 }
@@ -3719,36 +3813,7 @@ async function summarize_text(messages) {
     return result;
 }
 function refresh_memory() {
-    let ctx = getContext();
-    if (!chat_enabled()) { // if chat not enabled, remove the injections
-        ctx.setExtensionPrompt(`${MODULE_NAME}_long`, "");
-        ctx.setExtensionPrompt(`${MODULE_NAME}_short`, "");
-        return;
-    }
-
-    debug("Refreshing memory")
-
-    // Update the UI according to the current state of the chat memories, and update the injection prompts accordingly
-    update_message_inclusion_flags()  // update the inclusion flags for all messages
-
-    // get the filled out templates
-    let long_injection = get_long_memory();
-    let short_injection = get_short_memory();
-
-    let long_term_position = get_settings('long_term_position')
-    let short_term_position = get_settings('short_term_position')
-
-    // if using text completion, we need to wrap it in a system prompt
-    if (main_api !== 'openai') {
-        if (long_term_position !== extension_prompt_types.IN_CHAT && long_injection.length) long_injection = formatInstructModeChat("", long_injection, false, true)
-        if (short_term_position !== extension_prompt_types.IN_CHAT && short_injection.length) short_injection = formatInstructModeChat("", short_injection, false, true)
-    }
-
-    // inject the memories into the templates, if they exist
-    ctx.setExtensionPrompt(`${MODULE_NAME}_long`,  long_injection,  long_term_position, get_settings('long_term_depth'), get_settings('long_term_scan'), get_settings('long_term_role'));
-    ctx.setExtensionPrompt(`${MODULE_NAME}_short`, short_injection, short_term_position, get_settings('short_term_depth'), get_settings('short_term_scan'), get_settings('short_term_role'));
-
-    return `${long_injection}\n\n...\n\n${short_injection}`  // return the concatenated memory text
+    return refresh_memory_internal(true)
 }
 const refresh_memory_debounced = debounce(refresh_memory, debounce_timeout.relaxed);
 
