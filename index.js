@@ -896,12 +896,13 @@ function update_profile_section() {
     for (let profile of profile_options) {
         // if the current character/chat has a default profile, indicate as such
         let text = profile
+        let html_safe_name = clean_string_for_html(profile)
         if (profile === current_character_profile) {
             text = `${profile} (${t`Character`})`
         } else if (profile === current_chat_profile) {
             text = `${profile} (${t`Chat`})`
         }
-        $choose_profile_dropdown.append(`<option value="${profile}">${text}</option>`);
+        $choose_profile_dropdown.append(`<option value="${html_safe_name}">${text}</option>`);
     }
 
     // button highlights and icons
