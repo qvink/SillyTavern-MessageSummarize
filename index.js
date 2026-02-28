@@ -1276,18 +1276,23 @@ async function delete_profile() {
     // remove any references to this profile connected to characters or chats
     let character_profiles = get_settings('character_profiles')
     let chat_profiles = get_settings('chat_profiles')
-    for (let [id, name] of Object.entries(character_profiles)) {
-        if (name === profile) {
-            delete character_profiles[id]
+    if (character_profiles !== undefined) {
+        for (let [id, name] of Object.entries(character_profiles)) {
+            if (name === profile) {
+                delete character_profiles[id]
+            }
         }
+        set_settings('character_profiles', character_profiles)
     }
-    for (let [id, name] of Object.entries(chat_profiles)) {
-        if (name === profile) {
-            delete chat_profiles[id]
+
+    if (chat_profiles !== undefined) {
+        for (let [id, name] of Object.entries(chat_profiles)) {
+            if (name === profile) {
+                delete chat_profiles[id]
+            }
         }
+        set_settings('chat_profiles', chat_profiles)
     }
-    set_settings('character_profiles', character_profiles)
-    set_settings('chat_profiles', chat_profiles)
 
     auto_load_profile()
 }
