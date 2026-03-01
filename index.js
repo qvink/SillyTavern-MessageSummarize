@@ -3334,7 +3334,7 @@ class SummaryQueue {
         this.update_message_visuals(index, "Summarizing...")
 
         // If the most recent message, scroll to the bottom to get the summary in view (affected by ST settings)
-        if (index === chat.length - 1) {
+        if (index === context.chat.length - 1) {
             scrollChatToBottom();
         }
 
@@ -3382,7 +3382,7 @@ class SummaryQueue {
         this.update_message_visuals(index)
 
         // If the most recent message, scroll to the bottom again (summary may have pushed the bottom down a bit).
-        if (index === chat.length - 1) {
+        if (index === context.chat.length - 1) {
             scrollChatToBottom()
         }
     }
@@ -4392,6 +4392,7 @@ function set_character_enabled_button_states() {
 function get_message_indexes_from_command_range(value) {
     // Given a string input value (from a slash command), attempt to interpret it as an index or range of messages
     let range;
+    let chat = getContext().chat
     if (value === "") {
         range = {start: chat.length-1, end: chat.length-1}
     } else {
