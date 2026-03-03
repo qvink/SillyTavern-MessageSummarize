@@ -182,7 +182,7 @@ Connection profiles can specify things like instruct templates and completion pr
 - **No need to pause roleplay**: You don't have to include anything like "ignore previous instructions" or "pause your roleplay". The summary prompt is completely independent and will only send what you see in the edit window.
 
 
-- **I don't recommend reasoning**: Reasoning models can summarize fine, but they do tend to blab for ages which makes summarizing slow, so I wouldn't recommend them for that reason. If you do use one, make sure to use the appropriate prefill in your summarization prompt, and set the thinking formatting in your `Advanced Formatting` tab.
+- **I don't recommend reasoning**: Reasoning models can summarize fine, but they do tend to blab for ages which makes summarizing slow, so I wouldn't recommend them for that reason. If you do use one, make sure to use the appropriate prefill in your summarization prompt, and set the thinking formatting in your `Advanced Formatting` tab or your chosen summarization connection profile.
 
 
 - **Custom Macros**: In the `Edit` window for your summary prompt, you can create custom macros to use in your prompt with STScript. In your command, you can reference the ID of the message being summarized with `{{id}}` and the content of the message with `{{message}}`.
@@ -193,7 +193,7 @@ Connection profiles can specify things like instruct templates and completion pr
 ### Troubleshooting:
 
 - **I don't see the extension in the extension menu or I don't see any new buttons in the message menu:**
-You are most likely using an outdated version of ST - make sure to update to the latest version.
+You are most likely using an incompatible version of ST - make sure to update to the latest version of both ST and the extension.
 
 
 - **The summaries refer to "a person" / "an individual" / "someone" rather than by name:** 
@@ -254,7 +254,7 @@ This is most likely an issue with the summary prompt.\
 - **Just updated and things are broken:** try reloading the page first, and make sure you are on the most recent version of ST. If you are on the dev branch of this extension, you must also be on the staging branch of ST.
 
 
-- **An unknown error occurred while counting tokens**: This might indicate an issue with your custom chat completion preset. ST expects there to be a prompt section called "main", which is where extension injections go by default. If your preset doesn't have a section called "main", this will fail and cause the above error. To fix this, you can (1) add a section called "main" to your preset or (2) go to this extension's config menu and click "Do not inject" in both the short-term and long-term injection sections. This will prevent the extension from attempting to insert context, and you can instead use the `{{qm-long-term-memory}}` and `{{qm-short-term-memory}}` macros to place them anywhere you want.
+- **An unknown error occurred while counting tokens**: This might indicate an issue with your custom chat completion preset. ST expects there to be a prompt section called "main", which is where extension injections go by default. If your preset doesn't have a section called "main", this will fail and cause the above error. To fix this, you can (1) add a section called "main" to your preset or (2) go to this extension's config menu and click "Macro only" in both the short-term and long-term injection sections. This will prevent the extension from attempting to insert context, and you can instead use the `{{qm-long-term-memory}}` and `{{qm-short-term-memory}}` macros to place them anywhere you want.
 
 
 - **"ForbiddenError: invalid csrf token":** You opened ST in multiple tabs.
@@ -267,7 +267,7 @@ This is most likely an issue with the summary prompt.\
 
 
 ### Reporting an Issue
-You can raise an issue here, but I am more responsive on the SillyTavern [Discord server](https://discord.gg/sillytavern) as Qvink (#qvink1). There you will find [forum thread](https://discord.com/channels/1100685673633153084/1318109682329587722) dedicated to this extension (and others). You can send your problems there or DM me directly.
+You can raise an issue here on github or on the SillyTavern [Discord server](https://discord.gg/sillytavern) as Qvink (#qvink1). There you will find [forum thread](https://discord.com/channels/1100685673633153084/1318109682329587722) dedicated to this extension (and others). You can send your problems there or DM me directly.
 
 The best way to get a bug fixed is to help me reproduce it. Simply saying "X doesn't work" is unhelpful, even if you have a guess as to why.
 The easiest and quickest way to help me reproduce the bug is to provide the following information:
