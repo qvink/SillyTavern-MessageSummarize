@@ -158,6 +158,7 @@ const default_settings = {
     display_memories: true,  // display memories in the chat below each message
     default_chat_enabled: true,  // whether memory is enabled by default for new chats
     use_global_toggle_state: false,  // whether the on/off state for this profile uses the global state
+    add_timestamps: false,  // whether to include timestamps in the summary sent to the AI(if enabled, the date and time of the *original message* is added to the top of each summary)
 };
 const global_settings = {
     profiles: {},  // dict of profiles by name
@@ -3475,6 +3476,13 @@ function get_memory(message) {
     }
     return memory
 }
+function get_message_timestamp(message) {
+    // get the timestamp for the original message
+    const date = new Date(message.send_date);
+    const timestamp = date.toLocaleString(); 
+    const timeStampText = `Sent: ${timestamp}\n`;
+    return timeStampText;
+}
 function edit_memory(message, text) {
     // perform a manual edit of the memory text
 
@@ -3846,6 +3854,11 @@ function concatenate_summary(existing_text, message, separator=null) {
     if (!memory) {  // if there's no summary, do nothing
         return existing_text
     }
+    // prepend a timestamp if the setting is enabled
+    if (get_settings('add_timestamps')) {
+        memory = get_message_timestamp(message) + memory;
+    }
+
     separator = separator ?? get_settings('summary_injection_separator')
     return existing_text + separator + memory
 }
@@ -4285,7 +4298,7 @@ function initialize_settings_listeners() {
     bind_setting('#display_memories', 'display_memories', 'boolean')
     bind_setting('#default_chat_enabled', 'default_chat_enabled', 'boolean');
     bind_setting('#use_global_toggle_state', 'use_global_toggle_state', 'boolean');
-
+    bind_setting('#add_timestamps', 'add_timestamps', 'boolean');
     // trigger the change event once to update the display at start
     $(`.${settings_content_class} #long_term_context_limit`).trigger('change');
     $(`.${settings_content_class} #short_term_context_limit`).trigger('change');

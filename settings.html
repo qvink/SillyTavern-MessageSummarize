@@ -149,7 +149,10 @@
                     <input id="summary_injection_separator" class="text_pole" type="text" placeholder="" style="width: 3em">
                     <span>Summary Separator</span>
                 </label>
-
+                <label title="Include timestamps in the summary sent to the AI. Will not appear in the chat UI, but will be provided to the AI for context." class="checkbox_label">
+                    <input id="add_timestamps" type="checkbox">
+                    <span>Add Timestamps</span>
+                </label>
 
                 <label title="Summaries won't be injected until they are this far back in the chat (0 = start injecting summaries as soon as they are generated)." class="checkbox_label">
                     <input id="summary_injection_threshold" class="text_pole inline_setting" type="number" min="0" max="999" />
