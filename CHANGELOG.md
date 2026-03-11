@@ -1,6 +1,6 @@
 # Changelog
 
-#### v1.3.10
+#### v1.3.14
 **ST Version Requirement**: You must be on ST v1.14.0 (relies on [this PR](https://github.com/SillyTavern/SillyTavern/pull/4841))\
 **IMPORTANT**: Your summary `Completion Preset` is now entirely determined by the `Connection Profile`. If you previously had a `Completion Preset` configured for summaries, you will need to make sure that your `Connection Profile` specifies it instead.
 - **New Feature**: `Connection Profiles` are now used for summaries **without switching** back and forth. 
@@ -14,9 +14,10 @@
 - **Fixed**: Fixed case where short-term messages would be included in the short-term context size calculation even if they were not injected due to injection delay.
 - **Fixed**: Properly escapes special characters in summary prefill.
 - **Fixed**: Fixed bug where "Restore Profile" button didn't visually update memories in the chat.
-- **Fixed**: Fixed new chats auto-summarizing the first message when opening them.
+- **Fixed**: New chats no longer auto-summarize the first message when opening them.
 - **Fixed**: Removed unnecessary config settings update to reduce lag in some cases.
 - **Fixed**: Fixed edge case when retrieving the completion preset context size for the summary connection profile.
+- **Fixed**: Config profiles with special characters should now function properly.
 
 #### v1.2.16
 - **ST Version Requirement**: You must be on ST v1.13.5
