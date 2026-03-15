@@ -128,7 +128,7 @@ const default_settings = {
 
     // injection settings
     separate_long_term: false,  // whether to keep memories marked for long-term separate from short-term
-    summary_injection_separator: "\n* ",  // separator when concatenating summaries
+    summary_injection_format: "\n* {{summary}}",  // injected summary format
     summary_injection_threshold: 10,            // start injecting summaries after this many messages
     summary_injection_threshold_type: "messages",  // messages, tokens, percent
     exclude_messages_after_threshold: true,    // remove messages from context after the injection threshold
@@ -158,7 +158,6 @@ const default_settings = {
     display_memories: true,  // display memories in the chat below each message
     default_chat_enabled: true,  // whether memory is enabled by default for new chats
     use_global_toggle_state: false,  // whether the on/off state for this profile uses the global state
-    add_timestamps: false,  // whether to include timestamps in the summary sent to the AI(if enabled, the date and time of the *original message* is added to the top of each summary)
 };
 const global_settings = {
     profiles: {},  // dict of profiles by name
@@ -1555,8 +1554,9 @@ async function display_text_modal(title, text="") {
     let popup = new ctx.Popup(html, ctx.POPUP_TYPE.TEXT, undefined, {okButton: 'Close', allowVerticalScrolling: true, wider: true});
     await popup.show()
 }
-async function get_user_setting_text_input(key, title, description="") {
+async function get_user_setting_text_input(key, title, description="", size=20) {
     // Display a modal with a text area input, populated with a given setting value
+    // size is the number of rows in the text input
     let value = get_settings(key) ?? '';
 
     title = `
@@ -1572,7 +1572,7 @@ async function get_user_setting_text_input(key, title, description="") {
         }
     }
     let ctx = getContext();
-    let popup = new ctx.Popup(title, ctx.POPUP_TYPE.INPUT, value, {rows: 20, customButtons: [restore_button], wider: true});
+    let popup = new ctx.Popup(title, ctx.POPUP_TYPE.INPUT, value, {rows: size, customButtons: [restore_button], wider: true});
 
     add_i18n($(popup.content))  // translate any content
 
@@ -1710,7 +1710,7 @@ class MemoryEditInterface {
 <div id="qvink_memory_state_interface">
 <div class="flex-container justifyspacebetween alignitemscenter">
     <h3>Memory State</h3>
-    <button id="preview_memory_state" class="menu_button fa-solid fa-eye margin0" title="Preview current memory state (the exact text that will be injected into your context)."></button>
+    <button id="preview_memory_state" class="menu_button fa-solid fa-eye margin0" title="Preview current memory state (the content that will be injected into your context)."></button>
     <button id="expand_filter_bar" class="menu_button fa-solid fa-list-check margin0" title="Toggle chat filters"></button>
     <label class="checkbox_label" title="Selecting message subsets applies to the entire chat history. When unchecked, it only applies to the current page.">
         <input id="global_selection" type="checkbox" />
@@ -3480,9 +3480,7 @@ function get_memory(message) {
 function get_message_timestamp(message) {
     // get the timestamp for the original message
     const date = new Date(message.send_date);
-    const timestamp = date.toLocaleString(); 
-    const timeStampText = `Sent: ${timestamp}\n`;
-    return timeStampText;
+    return date.toLocaleString();
 }
 function edit_memory(message, text) {
     // perform a manual edit of the memory text
@@ -3754,6 +3752,7 @@ function check_message_exclusion(message) {
 function update_message_inclusion_flags() {
     // Update all messages in the chat, flagging them as short-term or long-term memories to include in the injection.
     // This has to be run on the entire chat since it needs to take the context limits into account.
+    // Because of this, we only ever want to call token_count() on unmodified message text to leverage ST's token count cache.
     let context = getContext();
     let chat = context.chat;
 
@@ -3768,11 +3767,12 @@ function update_message_inclusion_flags() {
     let short_limit_reached = false;
     let long_limit_reached = false;
     let end = chat.length - 1;
-    let short_token_size = 1  // due to the separator being at the beginning of text, it seems to always add 1 token to the count
-    let long_token_size = 1
+    let short_token_size = 0
+    let long_token_size = 0
 
-    // figure out how many tokens the injection separator adds
-    let sep_size = calculate_injection_separator_size()
+    // figure out how many tokens (approximately) that the injection format will add
+    let additional_formatted_size = calculate_injection_formatting_size()
+    debug("Est. summary format size difference: ", additional_formatted_size)
 
     // token limits
     let short_token_limit = get_short_token_limit()
@@ -3809,7 +3809,7 @@ function update_message_inclusion_flags() {
 
             // consider this for short term memories as long as we aren't separating long-term or (if we are), this isn't a long-term
             if (!separate_long_term || !get_data(message, 'remember')) {
-                let new_short_token_size = short_token_size + sep_size + count_tokens(get_memory(message))
+                let new_short_token_size = short_token_size + additional_formatted_size + count_tokens(get_memory(message))
                 if (new_short_token_size > short_token_limit) {  // over context limit
                     short_limit_reached = true;
                 } else {  // under context limit
@@ -3823,7 +3823,7 @@ function update_message_inclusion_flags() {
         // if the short-term limit has been reached (or we are separating), check the long-term limit.
         let remember = get_data(message, 'remember');
         if (!long_limit_reached && remember) {  // long-term limit hasn't been reached yet and the message was marked to be remembered
-            let new_long_token_size = long_token_size + sep_size + count_tokens(get_memory(message))
+            let new_long_token_size = long_token_size + additional_formatted_size + count_tokens(get_memory(message))
             if (new_long_token_size > long_token_limit) {  // over context limit
                 long_limit_reached = true;
             } else {
@@ -3849,46 +3849,39 @@ function update_message_inclusion_flags() {
 
     update_all_message_visuals()
 }
-function concatenate_summary(existing_text, message, separator=null) {
-    // given an existing text of concatenated summaries, concatenate the next one onto it
-    let memory = get_memory(message)
-    if (!memory) {  // if there's no summary, do nothing
-        return existing_text
-    }
-    // prepend a timestamp if the setting is enabled
-    if (get_settings('add_timestamps')) {
-        memory = get_message_timestamp(message) + memory;
-    }
-
-    separator = separator ?? get_settings('summary_injection_separator')
-    return existing_text + separator + memory
-}
-function concatenate_summaries(indexes, separator=null) {
+function concatenate_summaries(indexes, format=null) {
     // concatenate the summaries of the messages with the given indexes
-    // Excludes messages that don't meet the inclusion criteria
-
     let context = getContext();
     let chat = context.chat;
-
     let summary = ""
-    // iterate through given indexes
+
+    // Format and concatenate
     for (let i of indexes) {
-        let message = chat[i];
-        summary = concatenate_summary(summary, message, separator)
+        summary = summary + apply_injection_format(chat[i], format)
     }
 
     return summary
 }
 
-function calculate_injection_separator_size(separator=null) {
-    // Simply counting the tokens in the injection separator does not tell you how many total tokens it will actually add.
-    // Instead, we need to test it with some sample messages and see how the count changes.
+function calculate_injection_formatting_size(n=3) {
+    // To get an estimate of how many tokens the injection formatting will add, we need to test it with a sample and see how the count changes.
+    //TODO This isn't perfect, a more reliable method would be better.
     let ctx = getContext()
-    if (separator === null) separator = get_settings('summary_injection_separator')
-    let text = "This is a test."
-    let t1 = count_tokens(text)
-    let t2 = count_tokens(text + separator + text)  // in the middle
-    return t2 - (2*t1)
+    let test_memory = 'This is a test.'
+    let test_msg = {extra: {[MODULE_NAME]: {memory: test_memory}}, send_date: "January 1, 2026 12:12am"}
+    let formatted_memory = apply_injection_format(test_msg)
+    let memory_length = count_tokens(test_memory)
+    let formatted_length = count_tokens(formatted_memory.repeat(n))
+    return Math.round((formatted_length/n) - memory_length)
+}
+function apply_injection_format(message, format=null) {
+    // Apply the custom injection formatting to a message
+    let memory = get_memory(message)
+    if (!memory) return ''  // If no memory, return nothing
+    let text = format ?? get_settings('summary_injection_format')
+    text = text.replace('{{summary}}', memory)
+    text = text.replace('{{timestamp}}', get_message_timestamp(message))
+    return text
 }
 function collect_chat_messages(include) {
     // Get a list of chat message indexes identified by the given criteria
@@ -4236,18 +4229,33 @@ function initialize_settings_listeners() {
     <li>This will be the content of <b>{{${long_memory_macro}}}</b></li>
     <li>If there is nothing in long-term memory, the whole macro will be empty.</li>
     <li><b>{{${generic_memories_macro}}}</b> will be replaced by all long-term memories.</li>
+    <li>To change how each individual memory is formatted, go to the General Injection section and edit the summary format there.</li>
 </ul>`
-        get_user_setting_text_input('long_template', t`Edit Long-Term Memory Injection`, description)
+        get_user_setting_text_input('long_template', t`Edit Long-Term Memory Injection Format`, description)
     })
+
     bind_function('#edit_short_term_memory_prompt', async () => {
         let description = `
 <ul style="text-align: left; font-size: smaller;">
     <li>This will be the content of <b>{{${short_memory_macro}}}</b></li>
     <li>If there is nothing in short-term memory, the whole macro will be empty.</li>
     <li><b>{{${generic_memories_macro}}}</b> will be replaced by all short-term memories.</li>
+    <li>To change how each individual memory is formatted, go to the General Injection section and edit the summary format there.</li>
 </ul>`
-        get_user_setting_text_input('short_template', t`Edit Short-Term Memory Injection`, description)
+        get_user_setting_text_input('short_template', t`Edit Short-Term Memory Injection Format`, description)
     })
+
+    bind_function('#edit_summary_injection_format', async () => {
+        let description = `
+<ul style="text-align: left; font-size: smaller;">
+    This is how each summary will be formatted when injected into context. After formatting, each summary will be concatenated.
+    Available macros are:
+    <li><b>{{summary}}</b> - the summary to be injected.</li>
+    <li><b>{{timestamp}}</b> - the date and time of the message associated with the summary.</li>
+</ul>`
+        get_user_setting_text_input('summary_injection_format', 'Edit Individual Summary Format', description, 2)
+    })
+
 
     bind_setting('#connection_profile', 'connection_profile', 'text')
     bind_setting('#auto_summarize', 'auto_summarize', 'boolean');
@@ -4271,7 +4279,6 @@ function initialize_settings_listeners() {
 
     bind_setting('#block_chat', 'block_chat', 'boolean');
 
-    bind_setting('#summary_injection_separator', 'summary_injection_separator', 'text');
     bind_setting('#summary_injection_threshold', 'summary_injection_threshold', 'number');
     bind_setting('#summary_injection_threshold_type', 'summary_injection_threshold_type', 'text');
     bind_setting('#exclude_messages_after_threshold', 'exclude_messages_after_threshold', 'boolean');
@@ -4299,7 +4306,6 @@ function initialize_settings_listeners() {
     bind_setting('#display_memories', 'display_memories', 'boolean')
     bind_setting('#default_chat_enabled', 'default_chat_enabled', 'boolean');
     bind_setting('#use_global_toggle_state', 'use_global_toggle_state', 'boolean');
-    bind_setting('#add_timestamps', 'add_timestamps', 'boolean');
     // trigger the change event once to update the display at start
     $(`.${settings_content_class} #long_term_context_limit`).trigger('change');
     $(`.${settings_content_class} #short_term_context_limit`).trigger('change');
@@ -4579,16 +4585,16 @@ function initialize_slash_commands() {
         aliases: ['qvink-memory-get'],
         callback: async (args, value) => {
             let chat = getContext().chat
-            let separator = args.separator ?? get_settings('summary_injection_separator')
+            let format = args.format ?? get_settings('summary_injection_format')
             let indexes = get_message_indexes_from_command_range(value)
             if (indexes === undefined) return ""
-            return concatenate_summaries(indexes, separator)
+            return concatenate_summaries(indexes, format)
         },
         helpString: 'Return the memory associated with a given message index or range. If no index given, assumes the most recent message.',
         namedArgumentList: [
             SlashCommandNamedArgument.fromProps({
-                name: 'separator',
-                description: 'String to separate memories. Defaults to the current profile\'s separator.',
+                name: 'format',
+                description: 'String used to format summaries. Defaults to the current profile\'s injection format.',
                 isRequired: false,
                 typeList: [ARGUMENT_TYPE.STRING]
             }),

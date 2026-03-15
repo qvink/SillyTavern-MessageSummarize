@@ -144,15 +144,11 @@
 
                 <!-- General Injection Settings -->
                 <hr>
-                <h4 class="textAlignCenter">General Injection Settings <i class="fa-solid fa-info-circle" title="Determines how summaries are injected into context, applying to both short and long term memory."></i></h4>
-                <label title="Separator between summaries when injected into context." class="checkbox_label">
-                    <input id="summary_injection_separator" class="text_pole" type="text" placeholder="" style="width: 3em">
-                    <span>Summary Separator</span>
-                </label>
-                <label title="Include timestamps in the summary sent to the AI. Will not appear in the chat UI, but will be provided to the AI for context." class="checkbox_label">
-                    <input id="add_timestamps" type="checkbox">
-                    <span>Add Timestamps</span>
-                </label>
+                <h4 class="textAlignCenter">General Injection <i class="fa-solid fa-info-circle" title="Determines how summaries are injected into context, applying to both short and long term memory."></i></h4>
+
+                <div class="flex-container justifyspacebetween alignitemscenter">
+                    <button id="edit_summary_injection_format" class="menu_button flex1" title="Edit the format of individual injected summaries"><span>Edit Format</span></button>
+                </div>
 
                 <label title="Summaries won't be injected until they are this far back in the chat (0 = start injecting summaries as soon as they are generated)." class="checkbox_label">
                     <input id="summary_injection_threshold" class="text_pole inline_setting" type="number" min="0" max="999" />
@@ -196,10 +192,10 @@
 
                 <!-- Short-term memory -->
                 <hr>
-                <h4 class="textAlignCenter">Short-term Memory Injection <i class="fa-solid fa-info-circle" title="Determines which messages are included in the short-term memory injection and where it is placed in context."></i></h4>
+                <h4 class="textAlignCenter">Short-term Injection <i class="fa-solid fa-info-circle" title="Determines which messages are included in the short-term memory injection and where it is placed in context."></i></h4>
 
                 <div class="flex-container justifyspacebetween alignitemscenter">
-                    <button id="edit_short_term_memory_prompt" class="menu_button flex1" title="Edit the short-term memory prompt"><span>Edit</span></button>
+                    <button id="edit_short_term_memory_prompt" class="menu_button flex1" title="Edit the short-term memory injection format."><span>Edit Format</span></button>
                     <!--<button id="preview_short_term_memory" class="menu_button fa-solid fa-eye interactable" title="Preview the short-term memory injection" tabindex="0"></button>-->
                 </div>
 
@@ -265,9 +261,9 @@
 
                 <!-- Long-term memory -->
                 <hr>
-                <h4 class="textAlignCenter">Long-Term Memory Injection <i class="fa-solid fa-info-circle" title="Determines where long-term messages are placed in context."></i></h4>
+                <h4 class="textAlignCenter">Long-Term Injection <i class="fa-solid fa-info-circle" title="Determines where long-term messages are placed in context."></i></h4>
                 <div class="flex-container justifyspacebetween alignitemscenter">
-                    <button id="edit_long_term_memory_prompt" class="menu_button flex1" title="Edit the long-term memory prompt"><span>Edit</span></button>
+                    <button id="edit_long_term_memory_prompt" class="menu_button flex1" title="Edit the long-term memory injection format."><span>Edit Format</span></button>
                     <!--<button id="preview_long_term_memory" class="menu_button fa-solid fa-eye interactable" title="Preview the long-term memory injection" tabindex="0"></button>-->
                 </div>
 
