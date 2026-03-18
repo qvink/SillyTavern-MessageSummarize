@@ -10,6 +10,7 @@
 - [FAQ](#frequently-asked-questions)
 - [Troubleshooting](#troubleshooting)
 - [Reporting an Issue](#reporting-an-issue)
+- [Contributing](#contributing)
 - [Known Issues](#known-issues)
 
 
@@ -266,6 +267,11 @@ When you report an issue, please include the following information:
 7. Any errors in the browser console or ST terminal (you can access your browser console with F12).
 
 The best way to help identify a bug is to help me reproduce it. Simply saying "X doesn't work" is unhelpful. Ideally, the steps you provide in #6 above should start with creating a new, blank chat, using default settings for the extension, then every action you take up until you see something unexpected happen along with what you **expected** to happen instead. You can revert settings to default by scrolling to the bottom of the config and clicking `Revert Settings`.
+
+### Contributing
+- If you would like to contribute to this extension, please submit a PR to the `dev` branch as that contains the most up-to-date version of the extension.
+- I would request that individual features be in their own separate PRs as larger PRs are much harder to review.
+- I won't take any PRs refactoring the whole extension. Yes I know everything is in one file, I'll get around to it eventually.
 
 ### Known Issues
 - When editing a message that already has a memory, the memory displayed below the message does not have the right color. This is just a visual bug, and it will correct itself after the next summarization.
