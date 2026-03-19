@@ -92,18 +92,6 @@ Following is a history of messages for context:
 Following is the message to summarize:
 {{message}}
 `
-const default_detailed_prompt = `Summarize the following fictional message as a single paragraph of 2-3 sentences in past tense. Do not use bullet points or numbered lists.
-Include: character names (not pronouns), actions taken, dialogue points, emotional shifts, decisions made, and new information revealed.
-
-{{#if history}}
-Recent summary context (for reference only, do not re-summarize):
-{{history}}
-{{/if}}
-
-Message to summarize:
-{{message}}
-
-Summary:`
 const default_automated_memory_prompt = `You are a narrative analysis assistant. Below is a list of message summaries from a fictional roleplay. Each line has this format: Message NUMBER | Long-term: Yes/No | Summary: TEXT
 
 {{summaries}}
