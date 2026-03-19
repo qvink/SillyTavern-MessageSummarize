@@ -100,8 +100,8 @@ Your task: decide which of these messages should be preserved as long-term memor
 
 {{importance}}
 
-Respond with ONLY the message numbers as a comma-separated list. Do not include any other text, explanation, or formatting. If no messages qualify, respond with the single word NONE.`
-
+Respond with ONLY the message numbers as a comma-separated list. Do not include any other text, explanation, or formatting. If no messages qualify, respond with the single word NONE.
+`
 const automated_memory_importance_prompts = {
     none: '',
     high: `\nIMPORTANT: Be very strict. Only select messages where ALL of the following are true: the message changes the direction of the story, the information cannot be found in any other message, and removing it would make the plot impossible to follow. Do not select routine character development, casual relationship moments, or incremental progress. When in doubt, leave it out.`,
