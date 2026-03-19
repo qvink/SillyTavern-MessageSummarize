@@ -133,12 +133,12 @@ const default_settings = {
     connection_profile: "",  // connection profile to use for summarization. Empty ("") indicates the same as currently selected.
 
     // automated long-term memory settings
-    automated_memory_scope: 'all',        // 'all' = all messages, 'new' = since last long-term memory, 'last_n' = last N messages
-    automated_memory_last_n: 50,          // number of messages to process when scope is 'last_n'
-    automated_memory_allow_removal: false, // whether the analysis can also un-mark existing long-term memories
-    automated_memory_importance: 'medium',  // importance threshold: none, high, medium, low
-    automated_memory_auto: false,                      // whether to automatically trigger LTM analysis every N messages
-    automated_memory_auto_interval: 25,               // how many new messages between automatic LTM runs (minimum 10)
+    automated_memory_scope: 'all',   // 'all' = all messages, 'new' = since last long-term memory, 'last_n' = last N messages
+    automated_memory_last_n: 50,   // number of messages to process when scope is 'last_n'
+    automated_memory_allow_removal: false,   // whether the analysis can also un-mark existing long-term memories
+    automated_memory_importance: 'medium',   // importance threshold: none, high, medium, low
+    automated_memory_auto: false,   // whether to automatically trigger LTM analysis every N messages
+    automated_memory_auto_interval: 25,   // how many new messages between automatic LTM runs (minimum 10)
 
     auto_summarize: true,   // whether to automatically summarize new chat messages
     summarization_delay: 0,  // delay auto-summarization by this many messages (0 summarizes immediately after sending, 1 waits for one message, etc)
