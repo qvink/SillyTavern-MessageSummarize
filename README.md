@@ -9,7 +9,6 @@
 - [Tips & Tricks](#tips--tricks)
 - [Troubleshooting](#troubleshooting)
 - [Reporting an Issue](#reporting-an-issue)
-- [Contributing](#contributing)
 - [Known Issues](#known-issues)
 
 ### Version Requirement
@@ -297,11 +296,6 @@ The easiest and quickest way to help me reproduce the bug is to provide the foll
 Then record every single action you take up until you see something unexpected happen along with what you **expected** to happen instead. 
 You can revert settings to default by scrolling to the bottom of the config and clicking `Revert Settings`.
 8. Any errors in the browser console or ST terminal (you can access your console with F12 in most browsers). These can be included in the steps from #7.
-
-### Contributing
-- If you would like to contribute to this extension, please submit a PR to the `dev` branch as that contains the most up-to-date version of the extension.
-- I would request that individual features be in their own separate PRs as larger PRs are much harder to review.
-- I won't take any PRs refactoring the whole extension. Yes I know everything is in one file, I'll get around to it eventually.
 
 ### Known Issues
 - Using the API tokenizer may cause lag when opening chats under certain circumstances, cause currently unknown.

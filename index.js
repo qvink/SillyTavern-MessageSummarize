@@ -137,7 +137,6 @@ const default_settings = {
 
     // summarization settings
     prompt: default_prompt,
-    detailed_prompt: default_detailed_prompt,
     automated_memory_prompt: default_automated_memory_prompt,
     summary_prompt_macros: default_summary_macros,  // macros for the summary prompt interface
     prompt_role: extension_prompt_roles.SYSTEM,
@@ -2329,11 +2328,7 @@ class SummaryPromptEditInterface {
             <h3>Summary Prompt</h3>
             <i class="fa-solid fa-info-circle" style="margin-right: 1em" title="Customize the prompt used for summarizing messages."></i>
             <button id="preview_summary_prompt" class="menu_button fa-solid fa-eye margin0" title="Preview current summary prompt (the exact text that will be sent to the model)"></button>
-            <select id="restore_prompt_preset" class="text_pole inline_setting" title="Load a prompt preset">
-                <option value="" selected disabled>Load Preset</option>
-                <option value="default">Default</option>
-                <option value="detailed">Detailed</option>
-            </select>
+            <button id="restore_default_prompt" class="menu_button fa-solid fa-recycle margin0 red_button" title="Restore the default prompt"></button>
 
             <label class="flex-container alignItemsCenter" title="Role used for the summary prompt" style="margin-left: auto;">
                 <span>Role: </span>
@@ -2498,7 +2493,7 @@ class SummaryPromptEditInterface {
         this.$content = $(this.popup.content)
         this.$buttons = this.$content.find('.popup-controls')
         this.$preview = this.$content.find('#preview_summary_prompt')
-        this.$restore = this.$content.find('#restore_prompt_preset')
+        this.$restore = this.$content.find('#restore_default_prompt')
         this.$definitions = this.$content.find('#macro_definitions')
         this.$add_macro = this.$content.find('#add_macro')
         this.$open_macros = this.$content.find('.open_macros')
@@ -2516,11 +2511,8 @@ class SummaryPromptEditInterface {
         // buttons
         this.$preview.on('click', () => this.preview_prompt())
         this.$add_macro.on('click', () => this.new_macro())
-        this.$restore.on('change', (e) => {
-            const presets = { default: default_settings["prompt"], detailed: default_settings["detailed_prompt"] };
-            const selected = e.target.value;
-            if (presets[selected]) this.$prompt.val(presets[selected]);
-            e.target.value = '';  // reset to "Load Preset" placeholder
+        this.$restore.on('click', () => {
+            this.$prompt.val(default_settings["prompt"]);
         })
         this.$open_macros.on('click', () => {
             this.$content.find('.toggle-macro').toggle()
