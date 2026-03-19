@@ -3665,7 +3665,7 @@ function collect_long_term_memory_summaries(scope, end_index) {
 
     return { summary_lines, valid_indexes };
 }
-async function analyze_long_term_memory_chunk(chunk_lines, chunk_indexes, prompt_template, importance_text, profile) {
+async function analyze_long_term_memory_summary_chunk(chunk_lines, chunk_indexes, prompt_template, importance_text, profile) {
     // Send a single chunk of summary lines to the LLM and return the confirmed chat indexes.
     // Returns null on failure.
     let prompt_text = prompt_template
@@ -3765,7 +3765,7 @@ async function automated_long_term_memory(scope_override=null, end_index=null) {
         }
 
         debug(`Running automated LTM analysis${use_chunking ? ` (batch ${c + 1}/${total_chunks})` : ''}...`);
-        let confirmed = await analyze_long_term_memory_chunk(chunk.lines, chunk.indexes, prompt_template, importance_text, profile);
+        let confirmed = await analyze_long_term_memory_summary_chunk(chunk.lines, chunk.indexes, prompt_template, importance_text, profile);
 
         if (confirmed === null) {
             had_error = true;
