@@ -69,15 +69,10 @@ const generic_memories_macro = `memories`;
 
 // message button classes
 const remember_button_class = `${MODULE_NAME}_remember_button`
-const automated_memory_auto_button_class = `${MODULE_NAME}_automated_memory_auto_button`
 const summarize_button_class = `${MODULE_NAME}_summarize_button`
 const edit_button_class = `${MODULE_NAME}_edit_button`
 const forget_button_class = `${MODULE_NAME}_forget_button`
-
-// global flags and whatnot
-var STOP_SUMMARIZATION = false  // flag toggled when stopping summarization
-var SUMMARIZATION_DELAY_TIMEOUT = null  // the set_timeout object for the summarization delay
-var SUMMARIZATION_DELAY_RESOLVE = null
+const automated_memory_auto_button_class = `${MODULE_NAME}_automated_memory_auto_button`
 
 // Count new messages since last automated LTM run
 var automated_memory_auto_message_counter = 0
@@ -3690,7 +3685,7 @@ function collect_long_term_memory_summaries(scope, end_index) {
 
     return { summary_lines, valid_indexes };
 }
-async function analyze_long_term_memory_chunk(chunk_lines, chunk_indexes, prompt_template, importance_text) {
+async function analyze_long_term_memory_chunk(chunk_lines, chunk_indexes, prompt_template, importance_text, profile) {
     // Send a single chunk of summary lines to the LLM and return the confirmed chat indexes.
     // Returns null on failure.
     let prompt_text = prompt_template
@@ -3700,7 +3695,7 @@ async function analyze_long_term_memory_chunk(chunk_lines, chunk_indexes, prompt
 
     let result;
     try {
-        result = await summarize_text(messages);
+        result = await summarize_text(messages, profile);
     } catch (e) {
         error(`Automated LTM chunk analysis failed: ${e.message || e}`);
         return null;
@@ -3711,13 +3706,14 @@ async function analyze_long_term_memory_chunk(chunk_lines, chunk_indexes, prompt
         return null;
     }
 
-    debug(`Automated LTM chunk response: ${result}`);
+    let content = result.content;
+    debug(`Automated LTM chunk response: ${content}`);
 
-    if (result.trim().toUpperCase() === 'NONE') {
+    if (content.trim().toUpperCase() === 'NONE') {
         return [];
     }
 
-    let parsed_numbers = result.match(/\d+/g)?.map(Number) || [];
+    let parsed_numbers = content.match(/\d+/g)?.map(Number) || [];
     let chunk_valid_set = new Set(chunk_indexes);
     return parsed_numbers.filter(n => chunk_valid_set.has(n));
 }
@@ -3767,14 +3763,8 @@ async function automated_long_term_memory(scope_override=null, end_index=null) {
         { timeOut: 0, extendedTimeOut: 0, tapToDismiss: false }
     );
 
-    // Step 3: Switch to summary preset/profile
-    let summary_preset = get_settings('completion_preset');
-    let current_preset = await get_current_preset();
-    let summary_profile = get_settings('connection_profile');
-    let current_profile = await get_current_connection_profile();
-
-    await set_connection_profile(summary_profile);
-    await set_preset(summary_preset);
+    // Step 3: Resolve the connection profile to use for LTM analysis
+    let profile = get_summary_connection_profile();
 
     // Step 4: Process each chunk
     let prompt_template = get_settings('automated_memory_prompt');
@@ -3795,7 +3785,7 @@ async function automated_long_term_memory(scope_override=null, end_index=null) {
         }
 
         debug(`Running automated LTM analysis${use_chunking ? ` (batch ${c + 1}/${total_chunks})` : ''}...`);
-        let confirmed = await analyze_long_term_memory_chunk(chunk.lines, chunk.indexes, prompt_template, importance_text);
+        let confirmed = await analyze_long_term_memory_chunk(chunk.lines, chunk.indexes, prompt_template, importance_text, profile);
 
         if (confirmed === null) {
             had_error = true;
@@ -3804,10 +3794,6 @@ async function automated_long_term_memory(scope_override=null, end_index=null) {
 
         all_confirmed.push(...confirmed);
     }
-
-    // Restore preset/profile
-    await set_connection_profile(current_profile);
-    await set_preset(current_preset);
 
     toastr.clear($progress_toast);
 
