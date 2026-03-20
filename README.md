@@ -192,6 +192,9 @@ Connection profiles can specify things like instruct templates and completion pr
 - **Cloud Models are Picky**: Cloud APIs tend to have strict rules about how their prompts are constructed, so you may need to adjust things when creating your prompt. For example, some models have heavy filters enabled for `User` roles messages, and may work better with `System` messages. Some cloud models don't support `System` messages at all, so you would need to use `User`. You will need to experiment, or read up on what your particular cloud model expects.
 
 ### Troubleshooting:
+The first thing to check when encountering a problem is to try using the `dev` branch, as there is a chance it has already been fixed there.
+If not, continue with the following troubleshooting steps.
+If none of those address your issue, then feel free to submit a report following the steps in [Reporting an Issue](#reporting-an-issue).
 
 - **I don't see the extension in the extension menu or I don't see any new buttons in the message menu:**
 You are most likely using an incompatible version of ST - make sure to update to the latest version of both ST and the extension.
