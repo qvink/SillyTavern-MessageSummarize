@@ -1281,7 +1281,7 @@ async function delete_profile() {
     toast(`Deleted Configuration Profile: \"${profile}\"`, "success");
 
     // remove any references to this profile connected to characters
-    let character_profiles = get_settings('character_profiles')
+    let character_profiles = get_settings('character_profiles') ?? {}
     for (let [id, name] of Object.entries(character_profiles)) {
         if (name === profile) {
             delete character_profiles[id]
