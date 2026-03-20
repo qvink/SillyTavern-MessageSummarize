@@ -175,8 +175,6 @@ We need the specificity to override some theme styles.
 }
 
 
-
-
 /* Summary Prompt Interface */
 dialog:has(#qvink_summary_prompt_interface) {
     height: 90vh;  /* always full height */
@@ -217,9 +215,7 @@ dialog:has(#qvink_summary_prompt_interface) {
 
 
 
-
-
-/* Memory state interface */
+/* Memory Edit Interface */
 dialog:has(#qvink_memory_state_interface) {
     height: 90vh;  /* make the memory edit dialog always full height */
     max-height: 90vh;
@@ -240,23 +236,15 @@ dialog:has(#qvink_memory_state_interface) {
     margin: auto;
 }
 
+/* Edit interface message table */
 #qvink_memory_state_interface table {
     overflow-y: auto;
     display: block;
 }
-#qvink_memory_state_interface button.menu_button i {
-    margin-right: 1em;  /* buttons with icon before text needs margin after the icon */
-}
-#qvink_memory_state_interface #bulk_regex, #qvink_memory_state_interface #bulk_delete, #qvink_memory_state_interface #bulk_summarize  {
-    color: red;
-}
-#qvink_memory_state_interface #regex_selector  {
-    margin: 0;
-}
 #qvink_memory_state_interface table thead {
     position: sticky;
     top: 0;
-    z-index: 1;  /* to be above the body when scrolling */
+    z-index: 1;  /* force head to be above the body when scrolling */
     background: var(--SmartThemeBlurTintColor)
 }
 #qvink_memory_state_interface table {
@@ -302,4 +290,33 @@ dialog:has(#qvink_memory_state_interface) {
 }
 
 
+/* Edit interface action buttons */
+#qvink_memory_state_interface #bulk_actions {
+    gap: 0px 8px;
+}
+#qvink_memory_state_interface #bulk_actions > div {
+    flex: auto;
+}
+#qvink_memory_state_interface #bulk_actions button,
+#qvink_memory_state_interface #bulk_actions select {
+    width: 100%;
+}
+@media screen and (max-width: 800px) {
+    /* When on small screens, increase button vertical size for easier tapping */
+    #qvink_memory_state_interface #bulk_actions button,
+    #qvink_memory_state_interface #bulk_actions select {
+        padding: 0.5em;
+    }
+}
+#qvink_memory_state_interface button.menu_button i {
+    margin-right: 0.4em;  /* buttons with icon before text needs margin after the icon */
+}
+#qvink_memory_state_interface #bulk_regex,
+#qvink_memory_state_interface #bulk_delete,
+#qvink_memory_state_interface #bulk_summarize  {
+    color: red;
+}
+#qvink_memory_state_interface #regex_selector  {
+    margin: 0;
+}
 
