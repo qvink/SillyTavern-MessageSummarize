@@ -3165,9 +3165,9 @@ class SummaryQueue {
         // Filter out duplicate summaries
         let filtered = []
         for (let index of indexes) {
-            if (filter_duplicates) {  // remove duplicates even if they've already been run
+            if (filter_duplicates) {  // remove duplicates even if they've already been run (don't allow re-runs)
                 if (index in this.current_indexes) continue;
-            } else {  // Only remove duplicates if they haven't been run yet
+            } else {  // Only remove duplicates if they haven't been run yet (allows re-runs)
                 if (index in this.current_indexes && !(index in this.completed_indexes)) continue;
             }
             this.current_indexes[index] = null
@@ -3204,11 +3204,14 @@ class SummaryQueue {
         this.run();  // attempt to run the queue, resolving each task as they complete
         for (let promise of promises) {
             await promise.catch(result => {
-                error(`Aborted summarization promise. Error: ${result}`);
+                error(`Aborted summary. Error: ${result}`);
+            }).then(result => {
+                if (result !== undefined) log(result)
             })
         }
 
-        // If we have completed all tasks, clear flags and whatnot
+        // If we have completed all tasks, clear flags and whatnot.
+        // We might not have completed all tasks if there is another call to this function.
         if (this.current_progress >= this.current_task_count) {
             debug("Summary run complete - resetting flags.")
             remove_progress_bar('summarize')  // remove progress bar
@@ -3232,11 +3235,11 @@ class SummaryQueue {
     }
 
     async run() {
-        // Run the queue. This is called whenever a task finishes or when a new task is created.
+        // Run the queue, dispatching tasks in parallel. This is called whenever a task finishes or when a new task is created.
         // If the queue is already running or manually stopped, don't run again.
         if (this.queue_running || this.summarization_stopped) return
         this.queue_running = true
-        debug("Running summary queue.")
+        debug("Running summary queue...")
         let ctx = getContext();
 
         // optionally block user from sending chat messages while summarization is in progress
@@ -3266,14 +3269,17 @@ class SummaryQueue {
                     this.summarization_delay_resolve = resolve  // store the resolve function to call when cleared
                 });
             }
-            if (this.summarization_stopped) {  // summarization stopped during the delay
-                task.reject(new Error("Summarization stopped"))
-                this.active_workers -= 1;
+
+            if (this.summarization_stopped) {
+                // If summarization stopped during the delay
+                task.resolve(`Summary stopped. ID: ${task.index}`)
+                this.active_workers = Math.max(0, this.active_workers - 1);  // decrement active workers, minimum 0
                 this.current_progress += 1;
                 break;
             }
 
-            this.handle_task(task);  // Start worker (don't await - let it run in parallel)
+            // Start worker. This is async but we don't await - let it run in parallel.
+            this.handle_task(task);
         }
         this.queue_running = false  // queue has stopped running.
     }
@@ -3283,16 +3289,16 @@ class SummaryQueue {
         if (this.summarization_stopped) return  // already stopped
 
         this.summarization_stopped = true  // set the flag so asynchronous functions know
-        getContext().stopGeneration();  // stop generation on current message
+        getContext().stopGeneration();  // stop generation on current message (Does this only work for some backends?)
         clearTimeout(this.summarization_delay_timeout)  // clear the summarization delay timeout
         if (this.summarization_delay_resolve !== null) this.summarization_delay_resolve()  // resolve the delay promise so the await goes through
         progress_bar("summarize", null, null, "Stopping...")
 
-        // Clear the queue and reject all pending tasks
+        // Clear the queue and resolve all pending tasks
         while (this.queue.length > 0) {
             this.current_progress += 1
             let task = this.queue.shift();
-            task.reject(new Error("Summarization stopped"));
+            task.resolve(`Queued summary stopped. ID: ${task.index}`);
         }
         this.active_workers = 0
         progress_bar("summarize", this.current_progress, this.current_task_count, "Stopping...")
@@ -3302,11 +3308,11 @@ class SummaryQueue {
     async handle_task(task) {
         try {
             await this.summarize_message(task.index, task.profile);
-            task.resolve();
+            task.resolve();  // successful summary
         } catch (error) {
             task.reject(error);
         } finally {
-            this.active_workers -= 1;
+            this.active_workers = Math.max(0, this.active_workers - 1);  // decrement active workers, minimum 0
             this.current_progress += 1;
             this.completed_indexes[task.index] = null
             this.run();  // attempt to run more workers
