@@ -352,5 +352,6 @@ You can revert settings to default by scrolling to the bottom of the config and 
 - ~~fix prefill compatability with chat completion (generate_raw doesn't allow adding separate messages in chat completion)~~
 - ~~Re-summarize on continue~~
 - ~~Render markdown in summaries~~
-- ST PR to provide custom start/end strings to parseReasoningFromString(), and allow memories to be parsed any time. Should the reasoning format just be separate from the advanced formatting template?
-- When a config profile is deleted, it removes all references to itself from the character_profiles setting. However, since the chat-locked profiles are now saved with chat metadata, it can't remove references of itself there. the chat_metadata variable only access metadata for the current chat.
+- ST PR to provide custom start/end strings to parseReasoningFromString(), and allow memories to be parsed any time. Should the reasoning format just be separate from the advanced formatting template entirely?
+- When a config profile is deleted, it removes all references to itself from the character_profiles setting. However, since the chat-locked profiles are now saved with chat metadata, it can't remove references of itself there. the chat_metadata variable only access metadata for the current chat. Needs
+- Look into compatibility with ST new macro engine
