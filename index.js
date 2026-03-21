@@ -3147,10 +3147,12 @@ class SummaryQueue {
         this.summarization_delay_resolve = null
         this.first_summary = false  // flag set when an assistant message is sent
         this.show_progress = false  // Whether to show the progress bar
-        this.current_progress = 0
-        this.current_task_count = 0
+        this.started_progress = 0    // how many summaries have started in this series (increments after dispatch)
+        this.completed_progress = 0  // how many summaries have completed in this series (increments after completion, includes failures and abortions)
+        this.success_progress = 0    // how many summaries have SUCCESSFULLY completed  (increments after success only)
+        this.current_task_count = 0  // total current tasks to complete in this series.
         this.current_indexes = {}  // set of current indexes being summarized (used to filter duplicates)
-        this.completed_indexes = {}  // set of indexes that have been completed (used to filter duplicates)
+        this.completed_indexes = {}  // set of indexes that have been completed (used to filter duplicates, includes failures but NOT abortions)
     }
 
     async summarize(indexes, skip_first=true, show_progress=true, filter_duplicates=true) {
@@ -3161,6 +3163,9 @@ class SummaryQueue {
         }
         indexes = Array.isArray(indexes) ? indexes : [indexes]  // accept a single index
         if (!indexes.length) return;
+
+        // Resume if stopped
+        this.summarization_stopped = false
 
         // Filter out duplicate summaries
         let filtered = []
@@ -3177,19 +3182,16 @@ class SummaryQueue {
 
         let profile = get_summary_connection_profile()
         skip_first = skip_first || get_settings('summarization_time_delay_skip_first')  // Whether to skip the first summary delay
-        this.show_progress = this.show_progress || show_progress  // show progress if specified by any current tasks
         this.current_task_count += indexes.length
+        this.show_progress = (this.show_progress || show_progress) && this.current_task_count > 1  // show progress if specified by ANY current tasks
 
         // Update the total of the progress bar
-        if (this.show_progress && this.current_task_count > 1) {
-            progress_bar('summarize', null, this.current_task_count, null);
-        }
-
+        if (this.show_progress) progress_bar('summarize', null, this.current_task_count, null);
 
         // Add each one to the queue
         debug("Adding indexes to queue: ", indexes)
         let promises = []
-        let first = this.queue.length === 0 && this.current_progress === 0  // Whether this is the first summary in a series of summaries
+        let first = this.queue.length === 0 && this.started_progress === 0 && this.completed_progress === 0  // Whether this is the first summary in a series of summaries
         for (let index of indexes)  {
             let delay = !first || (first && !skip_first);  // Whether the summary should be delayed
             let promise = new Promise((resolve, reject) => {
@@ -3212,13 +3214,16 @@ class SummaryQueue {
 
         // If we have completed all tasks, clear flags and whatnot.
         // We might not have completed all tasks if there is another call to this function.
-        if (this.current_progress >= this.current_task_count) {
-            debug("Summary run complete - resetting flags.")
+        log(`Summaries succeeded: ${this.success_progress}/${this.completed_progress}`)
+        debug(`Summary series completed: ${this.completed_progress}/${this.current_task_count}`)
+        if (this.completed_progress >= this.current_task_count) {
             remove_progress_bar('summarize')  // remove progress bar
             this.show_progress = false
             this.summarization_stopped = false
             this.current_task_count = 0
-            this.current_progress = 0
+            this.started_progress = 0
+            this.completed_progress = 0
+            this.success_progress = 0
             this.current_indexes = {}
             this.completed_indexes = {}
 
@@ -3253,16 +3258,11 @@ class SummaryQueue {
             let task = this.queue.shift();
             this.active_workers += 1;
 
-            // Show progress if we are summarizing more than 1 message
-            if (this.show_progress && this.current_task_count > 1) {
-                progress_bar('summarize', this.current_progress+1, this.current_task_count, "Summarizing...");
-            }
-
             // delay start according to settings
             let time_delay = get_settings('summarization_time_delay')
             if (time_delay > 0 && task.delay) {
                 debug(`Delaying generation by ${time_delay} seconds`);
-                if (this.show_progress && this.current_task_count > 1) progress_bar('summarize', null, null, "Delaying");
+                if (this.show_progress) progress_bar('summarize', null, null, "Delaying...");
                 this.update_message_visuals(task.index, `Delaying summary ${time_delay}s...`)
                 await new Promise((resolve) => {
                     this.summarization_delay_timeout = setTimeout(resolve, time_delay * 1000)
@@ -3274,13 +3274,17 @@ class SummaryQueue {
                 // If summarization stopped during the delay
                 task.resolve(`Summary stopped. ID: ${task.index}`)
                 this.active_workers = Math.max(0, this.active_workers - 1);  // decrement active workers, minimum 0
-                this.current_progress += 1;
+                this.completed_progress += 1;
                 break;
             }
+
+            this.started_progress += 1;
+            if (this.show_progress) progress_bar('summarize', this.started_progress, this.current_task_count, "Summarizing...");  // show started_progress
 
             // Start worker. This is async but we don't await - let it run in parallel.
             this.handle_task(task);
         }
+        debug(`Summary queue has no more available workers: ${this.active_workers}/${max_workers} Queued: ${this.queue.length}`)
         this.queue_running = false  // queue has stopped running.
     }
 
@@ -3292,16 +3296,15 @@ class SummaryQueue {
         getContext().stopGeneration();  // stop generation on current message (Does this only work for some backends?)
         clearTimeout(this.summarization_delay_timeout)  // clear the summarization delay timeout
         if (this.summarization_delay_resolve !== null) this.summarization_delay_resolve()  // resolve the delay promise so the await goes through
-        progress_bar("summarize", null, null, "Stopping...")
+        if (this.show_progress) progress_bar("summarize", null, null, "Stopping...")
 
         // Clear the queue and resolve all pending tasks
         while (this.queue.length > 0) {
-            this.current_progress += 1
+            this.completed_progress += 1
             let task = this.queue.shift();
             task.resolve(`Queued summary stopped. ID: ${task.index}`);
         }
         this.active_workers = 0
-        progress_bar("summarize", this.current_progress, this.current_task_count, "Stopping...")
         log("Aborted summarization.")
     }
 
@@ -3309,11 +3312,12 @@ class SummaryQueue {
         try {
             await this.summarize_message(task.index, task.profile);
             task.resolve();  // successful summary
+            this.success_progress += 1;  // count 1 success
         } catch (error) {
             task.reject(error);
         } finally {
             this.active_workers = Math.max(0, this.active_workers - 1);  // decrement active workers, minimum 0
-            this.current_progress += 1;
+            this.completed_progress += 1;  // count 1 completed
             this.completed_indexes[task.index] = null
             this.run();  // attempt to run more workers
         }
@@ -4215,7 +4219,7 @@ function initialize_settings_listeners() {
     bind_function('#chat_profile', () => toggle_chat_profile());
     bind_setting('#notify_on_profile_switch', 'notify_on_profile_switch', 'boolean')
 
-    bind_function('#stop_summarization', summaryQueue.stop);
+    bind_function('#stop_summarization', () => summaryQueue.stop());
     bind_function('#revert_settings', reset_settings);
 
     bind_function('#toggle_chat_memory', () => toggle_chat_enabled(), false);
