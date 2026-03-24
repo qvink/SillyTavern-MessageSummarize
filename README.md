@@ -294,6 +294,7 @@ You can revert settings to default by scrolling to the bottom of the config and 
 ### Known Issues
 - Using the API tokenizer may cause lag when opening chats under certain circumstances, cause currently unknown.
 - Incompatible with the NoAss extension when using chat completion endpoints.
+- Using two openai-compatible endpoints with different API keys for summaries and chat can result in issues.
 
 ### Todo
 - ~~Ability to choose a connection profile for summarization~~
