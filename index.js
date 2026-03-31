@@ -3727,7 +3727,7 @@ async function analyze_long_term_memory_summary_chunk(chunk_lines, chunk_indexes
 
     let result;
     try {
-        result = await summarize_text(messages, profile);
+        result = await summaryQueue.summarize_text(messages, profile);
     } catch (e) {
         error(`Automated LTM chunk analysis failed: ${e.message || e}`);
         return null;
