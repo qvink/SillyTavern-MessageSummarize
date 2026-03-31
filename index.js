@@ -1695,7 +1695,7 @@ class MemoryEditInterface {
             "title": "Summaries automatically tagged for long-term memory by automated analysis",
             "display": "Long-Term (Auto)",
             "check": (msg) => get_data(msg, 'remember_auto'),
-            "default": false,
+            "default": true,
             "count": 0
         },
         "excluded": {
@@ -1895,6 +1895,7 @@ class MemoryEditInterface {
             // Get nessages that are manual and not auto and toggle them normally with remember_message_toggle
             let manual_remember = selection.filter(i => !get_data(this.ctx.chat[i], 'remember_auto') || get_data(this.ctx.chat[i], 'remember'));
             if (manual_remember.length > 0) remember_message_toggle(manual_remember);
+
             // For auto-only messages we can only toggle them to "false"
             let auto_only = selection.filter(i => get_data(this.ctx.chat[i], 'remember_auto') && !get_data(this.ctx.chat[i], 'remember'));
             if (auto_only.length > 0) remember_auto_message_toggle(auto_only, false);
