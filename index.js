@@ -3717,37 +3717,6 @@ function build_ltm_summary_lines(indexes) {
     }
     return { summary_lines, valid_indexes };
 }
-async function analyze_long_term_memory_summary_chunk(chunk_lines, chunk_indexes, prompt_template, profile) {
-    // Send a single chunk of summary lines to the LLM and return the confirmed chat indexes.
-    // Returns null on failure.
-    let prompt_text = prompt_template
-        .replace('{{summaries}}', chunk_lines.join('\n'));
-    let messages = [{role: 'system', content: prompt_text}];
-
-    let result;
-    try {
-        result = await summaryQueue.summarize_text(messages, profile);
-    } catch (e) {
-        error(`Automated LTM chunk analysis failed: ${e.message || e}`);
-        return null;
-    }
-
-    if (!result) {
-        error('Automated LTM chunk analysis returned no result.');
-        return null;
-    }
-
-    let content = result.content;
-    debug(`Automated LTM chunk response: ${content}`);
-
-    if (content.trim().toUpperCase() === 'NONE') {
-        return [];
-    }
-
-    let parsed_numbers = content.match(/\d+/g)?.map(Number) || [];
-    let chunk_valid_set = new Set(chunk_indexes);
-    return parsed_numbers.filter(n => chunk_valid_set.has(n));
-}
 async function automated_long_term_memory(scope_override=null, end_index=null, indexes=null) {
     // Use an LLM to identify critically important summaries and mark them as long-term memories.
     // scope_override: if provided, ignores the scope setting ('all', 'new', 'last_n')
@@ -3765,70 +3734,40 @@ async function automated_long_term_memory(scope_override=null, end_index=null, i
         return;
     }
 
-    // Step 2: Determine chunking — when processing all with a non-'all' scope, split into chunks of last_n.
-    // 'all' scope sends everything in a single batch; 'new' and 'last_n' chunk by last_n size.
-    let chunk_size = get_settings('automated_memory_last_n') || 50;
-    let is_process_all = scope_override === 'all';
-    let scope_allows_chunking = get_settings('automated_memory_scope') !== 'all';
-    let exceeds_chunk_size = summary_lines.length > chunk_size;
-    let use_chunking = is_process_all && scope_allows_chunking && exceeds_chunk_size;
-    let chunks = [];
-    if (use_chunking) {
-        for (let i = 0; i < summary_lines.length; i += chunk_size) {
-            chunks.push({
-                lines: summary_lines.slice(i, i + chunk_size),
-                indexes: valid_indexes.slice(i, i + chunk_size),
-            });
-        }
-        debug(`Processing ${summary_lines.length} summaries in ${chunks.length} chunks of up to ${chunk_size}`);
-    } else {
-        chunks.push({ lines: summary_lines, indexes: valid_indexes });
-    }
-
-    // Show a persistent blue notification while the LLM is working
-    let total_chunks = chunks.length;
-    let $progress_toast = toastr.info(
-        use_chunking
-            ? `Analyzing ${summary_lines.length} summaries in ${total_chunks} batches...`
-            : `Analyzing ${summary_lines.length} message summaries...`,
-        MODULE_NAME_FANCY,
-        { timeOut: 0, extendedTimeOut: 0, tapToDismiss: false }
-    );
-
-    // Step 3: Resolve the connection profile to use for LTM analysis
+    // Step 2: Send summaries to the LLM for analysis
+    let prompt_text = get_settings('automated_memory_prompt').replace('{{summaries}}', summary_lines.join('\n'));
+    let messages = [{role: 'system', content: prompt_text}];
     let profile = get_summary_connection_profile();
 
-    // Step 4: Process each chunk
-    let prompt_template = get_settings('automated_memory_prompt');
-    let all_confirmed = [];
-    let had_error = false;
-
-    for (let c = 0; c < chunks.length; c++) {
-        let chunk = chunks[c];
-
-        if (use_chunking) {
-            toastr.clear($progress_toast);
-            $progress_toast = toastr.info(
-                `Processing batch ${c + 1} of ${total_chunks} (${chunk.lines.length} messages)...`,
-                MODULE_NAME_FANCY,
-                { timeOut: 0, extendedTimeOut: 0, tapToDismiss: false }
-            );
-        }
-
-        debug(`Running automated LTM analysis${use_chunking ? ` (batch ${c + 1}/${total_chunks})` : ''}...`);
-        let confirmed = await analyze_long_term_memory_summary_chunk(chunk.lines, chunk.indexes, prompt_template, profile);
-
-        if (confirmed === null) {
-            had_error = true;
-            break;
-        }
-
-        all_confirmed.push(...confirmed);
+    let $progress_toast = toastr.info(`Analyzing ${summary_lines.length} message summaries...`, MODULE_NAME_FANCY, { timeOut: 0, extendedTimeOut: 0, tapToDismiss: false });
+    debug('Running automated LTM analysis...');
+    let result;
+    try {
+        result = await summaryQueue.summarize_text(messages, profile);
+    } catch (e) {
+        toastr.clear($progress_toast);
+        error(`Automated LTM analysis failed: ${e.message || e}`);
+        return;
     }
-
     toastr.clear($progress_toast);
 
-    if (had_error) return;
+    if (!result) {
+        error('Automated LTM analysis returned no result.');
+        return;
+    }
+
+    let content = result.content;
+    debug(`Automated LTM response: ${content}`);
+
+    let all_confirmed;
+    if (content.trim().toUpperCase() === 'NONE') {
+        all_confirmed = [];
+    } else {
+        let valid_set = new Set(valid_indexes);
+        all_confirmed = (content.match(/\d+/g)?.map(Number) || []).filter(n => valid_set.has(n));
+    }
+
+    if (all_confirmed === null) return;
 
     if (all_confirmed.length === 0) {
         log('Automated long-term memory analysis: no critically important messages identified.');
