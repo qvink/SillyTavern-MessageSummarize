@@ -114,6 +114,7 @@ If instead you enable `Always Separate`, marked summaries will always be put in 
 
 #### Automated Long-term Memory
 - This section controls how the extension automatically identifies and tags important summaries as `long-term` memories using an LLM.
+- For bulk processing of memories use the `Edit Memory` button and select the memories to be processed. 
 - The `Scope` setting determines which messages are included when analysis is triggered — either automatically or via the message button:
   - `Process All Memories` sends every summarized message to the LLM.
   - `Process New Memories` only analyzes messages from the most recent `long-term` memory entry up to the latest message, making it efficient for incremental updates.
