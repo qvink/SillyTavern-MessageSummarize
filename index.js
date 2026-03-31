@@ -93,13 +93,33 @@ Following is a history of messages for context:
 Following is the message to summarize:
 {{message}}
 `
-const default_automated_memory_prompt = `You are a narrative analysis assistant. Below is a list of message summaries from a fictional roleplay. Each line has this format: Message NUMBER | Long-term: Yes/No | Summary: TEXT
+const default_automated_memory_prompt = `You are a narrative analysis assistant for an ongoing fictional roleplay. Your task: decide which message summaries should be preserved as long-term memories. This is an ongoing story — you cannot know for certain what will matter later, so err on the side of preserving anything that could be referenced or built upon.
+
+PRESERVE messages that contain any of the following:
+- A new character appearing or being introduced
+- Characters meeting or interacting for the first time
+- Relationship developments (friendships, conflicts, romance, alliances, betrayals, trust shifts)
+- Plot-advancing events or actions that change the story's direction
+- Key decisions or commitments made by characters
+- Revelations, discoveries, or new information about characters or the world
+- New locations, setting changes, or world-building details
+- Conflicts being introduced or resolved
+- Changes in a character's status, abilities, or position
+- Promises, agreements, or plans characters make
+- Deaths, departures, or arrivals
+- Significant emotional turning points that alter character dynamics
+- The opening or setup of a new scene, arc, or situation
+
+EXCLUDE only messages that are:
+- Redundant with another already-remembered summary (marked Long-term: Yes)
+- Purely transitional with no narrative content (e.g., just moving between locations without anything happening)
+- Minor reactions or internal thoughts that don't reveal anything new or change anything
+
+Below are the message summaries to analyze. Each line has this format: Message NUMBER | Long-term: Yes/No | Summary: TEXT
 
 {{summaries}}
 
-Your task: decide which of these messages should be preserved as long-term memories. A message is worth preserving if it introduces important characters, advances the plot, contains a key decision or revelation, or establishes facts the story depends on. Do NOT include messages that are routine actions, filler, minor reactions, or repeat information already covered by another remembered message.
-
-IMPORTANT: Be selective. Include messages that contain significant character development, major relationship changes, key decisions, important revelations, or events that later story developments depend on. Do not include routine conversations, minor emotional reactions, repeated information, or moments where nothing new is introduced. When in doubt, leave it out.
+When in doubt, preserve the memory. It is better to remember something that turns out minor than to forget something the story depends on later.
 
 Respond with ONLY the message numbers as a comma-separated list. Do not include any other text, explanation, or formatting. If no messages qualify, respond with the single word NONE.
 `
