@@ -1424,7 +1424,7 @@ function get_message_div(index) {
 }
 function get_summary_style_class(message) {
     let include = get_data(message, 'include');
-    let remember = get_data(message, 'remember');
+    let remember = get_data(message, 'remember') || get_data(message, 'remember_auto');
     let exclude = get_data(message, 'exclude');  // force-excluded by user
     let lagging = get_data(message, 'lagging');  // not injected yet
 
@@ -1691,6 +1691,13 @@ class MemoryEditInterface {
             "default": true,
             "count": 0
         },
+        "long_term_auto": {
+            "title": "Summaries automatically tagged for long-term memory by automated analysis",
+            "display": "Long-Term (Auto)",
+            "check": (msg) => get_data(msg, 'remember_auto'),
+            "default": false,
+            "count": 0
+        },
         "excluded": {
             "title": "Summaries not in short-term or long-term memory",
             "display": "Forgot",
@@ -1884,7 +1891,13 @@ class MemoryEditInterface {
 
         // bulk action buttons
         this.$content.find(`#bulk_remember`).on('click', () => {
-            remember_message_toggle(this.get_sorted_selection())
+            let selection = this.get_sorted_selection();
+            // Get nessages that are manual and not auto and toggle them normally with remember_message_toggle
+            let manual_remember = selection.filter(i => !get_data(this.ctx.chat[i], 'remember_auto') || get_data(this.ctx.chat[i], 'remember'));
+            if (manual_remember.length > 0) remember_message_toggle(manual_remember);
+            // For auto-only messages we can only toggle them to "false"
+            let auto_only = selection.filter(i => get_data(this.ctx.chat[i], 'remember_auto') && !get_data(this.ctx.chat[i], 'remember'));
+            if (auto_only.length > 0) remember_auto_message_toggle(auto_only, false);
             this.update_table()
         })
         this.$content.find(`#bulk_exclude`).on('click', () => {
@@ -1924,7 +1937,11 @@ class MemoryEditInterface {
         })
         this.$content.on("click", `tr .${remember_button_class}`, function () {
             let message_id = Number($(this).closest('tr').attr('message_id'));  // get the message ID from the row's "message_id" attribute
-            remember_message_toggle(message_id);
+            if (get_data(self.ctx.chat[message_id], 'remember_auto')) {
+                remember_auto_message_toggle(message_id, false);
+            } else {
+                remember_message_toggle(message_id);
+            }
             self.update_table()
         });
         this.$content.on("click", `tr .${forget_button_class}`, function () {
@@ -2023,6 +2040,7 @@ class MemoryEditInterface {
         let filter_no_summary = this.filter_bar.no_summary.filtered()
         let filter_short_term = this.filter_bar.short_term.filtered()
         let filter_long_term = this.filter_bar.long_term.filtered()
+        let filter_long_term_auto = this.filter_bar.long_term_auto.filtered()
         let filter_excluded = this.filter_bar.excluded.filtered()
         let filter_force_excluded = this.filter_bar.force_excluded.filtered()
         let filter_edited = this.filter_bar.edited.filtered()
@@ -2037,6 +2055,7 @@ class MemoryEditInterface {
 
             if (filter_short_term           && this.filter_bar.short_term.check(msg)) include = true;
             else if (filter_long_term       && this.filter_bar.long_term.check(msg)) include = true;
+            else if (filter_long_term_auto  && this.filter_bar.long_term_auto.check(msg)) include = true;
             else if (filter_no_summary      && this.filter_bar.no_summary.check(msg)) include = true;
             else if (filter_errors          && this.filter_bar.errors.check(msg)) include = true;
             else if (filter_excluded        && this.filter_bar.excluded.check(msg)) include = true;
@@ -3595,6 +3614,7 @@ async function remember_message_toggle(indexes=null, value=null) {
         let message = context.chat[index]
         set_data(message, 'remember', value);
         set_data(message, 'exclude', false);  // regardless, remove excluded flag
+        if (!value) set_data(message, 'remember_auto', false);  // clearing remember also clears auto
 
         let memory = get_data(message, 'memory')
         if (value && !memory) {
@@ -3664,7 +3684,7 @@ function collect_long_term_memory_summaries(scope, end_index) {
     // Start from the most recent long-term memory (searching back from last_index)
     if (scope === 'new') {
         for (let i = last_index; i >= 0; i--) {
-            if (get_data(chat[i], 'remember')) {
+            if (get_data(chat[i], 'remember') || get_data(chat[i], 'remember_auto')) {
                 start_index = i;
                 break;
             }
@@ -3690,7 +3710,7 @@ function collect_long_term_memory_summaries(scope, end_index) {
     for (let i = start_index; i <= last_index; i++) {
         let memory = get_data(chat[i], 'memory');
         if (!memory) continue;
-        let is_remembered = get_data(chat[i], 'remember') ? 'Yes' : 'No';
+        let is_remembered = (get_data(chat[i], 'remember') || get_data(chat[i], 'remember_auto')) ? 'Yes' : 'No';
         summary_lines.push(`Message ${i} | Long-term: ${is_remembered} | Summary: ${memory}`);
         valid_indexes.push(i);
     }
@@ -4066,7 +4086,7 @@ function update_message_inclusion_flags() {
             }
 
             // consider this for short term memories as long as we aren't separating long-term or (if we are), this isn't a long-term
-            if (!separate_long_term || !get_data(message, 'remember')) {
+            if (!separate_long_term || (!get_data(message, 'remember') && !get_data(message, 'remember_auto'))) {
                 let new_short_token_size = short_token_size + sep_size + count_tokens(get_memory(message))
                 if (new_short_token_size > short_token_limit) {  // over context limit
                     short_limit_reached = true;
@@ -4079,7 +4099,7 @@ function update_message_inclusion_flags() {
         }
 
         // if the short-term limit has been reached (or we are separating), check the long-term limit.
-        let remember = get_data(message, 'remember');
+        let remember = get_data(message, 'remember') || get_data(message, 'remember_auto');
         if (!long_limit_reached && remember) {  // long-term limit hasn't been reached yet and the message was marked to be remembered
             let new_long_token_size = long_token_size + sep_size + count_tokens(get_memory(message))
             if (new_long_token_size > long_token_limit) {  // over context limit
