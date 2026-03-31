@@ -120,6 +120,7 @@ EXCLUDE messages that are:
 This is an ongoing story — you cannot know for certain what will matter later. When a summary contains new information, preserve it even if it seems minor now.
 
 Below are the message summaries to analyze. Each line has this format: Message NUMBER | Long-term: Yes/No | Summary: TEXT
+Messages already marked "Long-term: Yes" are examples of the kind of summary worth preserving — use them as a reference for the quality and relevance bar when evaluating unmarked messages.
 
 {{summaries}}
 
