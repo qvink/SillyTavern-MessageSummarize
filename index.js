@@ -3454,6 +3454,12 @@ class SummaryQueue {
             error(`Text to summarize (${token_size}) exceeds summary context size (${context_size}).`);
         }
 
+        let connection = ctx.ConnectionManagerRequestService.getConnection(profile);
+        console.warn('connection properties:', connection);
+        if (!connection) {
+            throw new Error(`No connection found for profile: ${profile}`);
+        }
+
         let result = await ctx.ConnectionManagerRequestService.sendRequest(profile, messages)
 
         // trim incomplete sentences if set in ST settings
