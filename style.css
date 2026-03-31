@@ -316,6 +316,9 @@ dialog:has(#qvink_memory_state_interface) {
 #qvink_memory_state_interface #bulk_summarize  {
     color: red;
 }
+#qvink_memory_state_interface #bulk_auto_ltm  {
+    color: red;
+}
 #qvink_memory_state_interface #regex_selector  {
     margin: 0;
 }
