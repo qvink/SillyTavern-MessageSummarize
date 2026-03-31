@@ -1785,6 +1785,7 @@ class MemoryEditInterface {
     <div><button id="bulk_exclude"    class="menu_button" title="Toggle inclusion of selected summaries from all memory">     <i class="fa-solid fa-ban"></i>Exclude</button></div>
     <div><button id="bulk_copy"       class="menu_button" title="Copy selected memories to clipboard">                        <i class="fa-solid fa-copy"></i>Copy</button></div>
     <div><button id="bulk_summarize"  class="menu_button" title="Re-Summarize selected memories">                             <i class="fa-solid fa-quote-left"></i>Summarize</button></div>
+    <div><button id="bulk_auto_ltm"   class="menu_button" title="Run automated long-term memory analysis on selected memories"><i class="fa-solid fa-wand-magic-sparkles"></i>Auto Long-Term</button></div>
     <div><button id="bulk_delete"     class="menu_button" title="Delete selected memories">                                   <i class="fa-solid fa-trash"></i>Delete</button></div>
     <div><button id="bulk_regex"      class="menu_button" title="Run the selected regex script on selected memories">         <i class="fa-solid fa-shuffle"></i>Regex Replace</button></div>
     <div><select id="regex_selector"  title="Choose regex script"></select>
@@ -1900,6 +1901,10 @@ class MemoryEditInterface {
         })
         this.$content.find(`#bulk_summarize`).on('click', async () => {
             await summaryQueue.summarize(this.get_sorted_selection());  // summarize in ascending order
+        })
+        this.$content.find(`#bulk_auto_ltm`).on('click', async () => {
+            await automated_long_term_memory(null, null, this.get_sorted_selection());
+            this.update_table();
         })
         this.$content.find(`#bulk_delete`).on('click', () => {
             this.get_sorted_selection().forEach(id => {
