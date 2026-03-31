@@ -3474,9 +3474,14 @@ class SummaryQueue {
             custom_include_body: ctx.chatCompletionSettings?.custom_include_body,
             custom_exclude_body: ctx.chatCompletionSettings?.custom_exclude_body,
             custom_include_headers: ctx.chatCompletionSettings?.custom_include_headers,
-            vertexai_region: ctx.chatCompletionSettings?.vertexai_region,
-            zai_endpoint: ctx.chatCompletionSettings?.zai_endpoint,
-            siliconflow_endpoint: ctx.chatCompletionSettings?.siliconflow_endpoint,
+        });
+
+        const presetManager = ctx.getPresetManager?.('openai');
+        const preset = presetManager?.getCompletionPresetByName?.(connection.preset);
+        console.warn('[summarize_text] preset fields (chat_completion_source may override settings):', {
+            name: preset?.name,
+            chat_completion_source: preset?.chat_completion_source,
+            temperature: preset?.temperature,
         });
 
         let result = await ctx.ConnectionManagerRequestService.sendRequest(profile, messages)
