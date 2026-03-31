@@ -1891,14 +1891,7 @@ class MemoryEditInterface {
 
         // bulk action buttons
         this.$content.find(`#bulk_remember`).on('click', () => {
-            let selection = this.get_sorted_selection();
-            // Get nessages that are manual and not auto and toggle them normally with remember_message_toggle
-            let manual_remember = selection.filter(i => !get_data(this.ctx.chat[i], 'remember_auto') || get_data(this.ctx.chat[i], 'remember'));
-            if (manual_remember.length > 0) remember_message_toggle(manual_remember);
-
-            // For auto-only messages we can only toggle them to "false"
-            let auto_only = selection.filter(i => get_data(this.ctx.chat[i], 'remember_auto') && !get_data(this.ctx.chat[i], 'remember'));
-            if (auto_only.length > 0) remember_auto_message_toggle(auto_only, false);
+            remember_message_toggle(this.get_sorted_selection())
             this.update_table()
         })
         this.$content.find(`#bulk_exclude`).on('click', () => {
@@ -1938,11 +1931,7 @@ class MemoryEditInterface {
         })
         this.$content.on("click", `tr .${remember_button_class}`, function () {
             let message_id = Number($(this).closest('tr').attr('message_id'));  // get the message ID from the row's "message_id" attribute
-            if (get_data(self.ctx.chat[message_id], 'remember_auto')) {
-                remember_auto_message_toggle(message_id, false);
-            } else {
-                remember_message_toggle(message_id);
-            }
+            remember_message_toggle(message_id);
             self.update_table()
         });
         this.$content.on("click", `tr .${forget_button_class}`, function () {
@@ -3615,7 +3604,7 @@ async function remember_message_toggle(indexes=null, value=null) {
         let message = context.chat[index]
         set_data(message, 'remember', value);
         set_data(message, 'exclude', false);  // regardless, remove excluded flag
-        if (!value) set_data(message, 'remember_auto', false);  // clearing remember also clears auto
+        set_data(message, 'remember_auto', false);  // always clear auto flag when manually toggling
 
         let memory = get_data(message, 'memory')
         if (value && !memory) {
