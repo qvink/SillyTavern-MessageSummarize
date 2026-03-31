@@ -95,12 +95,14 @@ Following is the message to summarize:
 `
 const default_automated_memory_prompt = `You are a narrative analysis assistant for an ongoing fictional roleplay. Your task: decide which message summaries should be preserved as long-term memories.
 
-The key test for each summary: does it introduce a fact, name, relationship detail, backstory, or situation change that would be LOST if this summary were removed? If removing it would leave no gap in the story's record, it is not worth preserving.
+The key test for each summary: does it introduce a fact, name, relationship detail, backstory, emotional development, or situation change that would be LOST if this summary were removed? If removing it would leave no gap in the story's record, it is not worth preserving.
 
 PRESERVE messages that introduce new information such as:
 - A character's name, identity, or backstory being revealed
 - New facts about a character's situation, history, or motivations
 - Relationship developments (friendships, conflicts, romance, alliances, betrayals, trust shifts)
+- Characters bonding, warming up to each other, or forming connections — or the opposite: growing hostile, distrustful, or distant — even through casual interaction
+- Characters observing or reacting to dynamics between others (e.g., a parent noticing someone bonding with their child, someone witnessing a confrontation or slight)
 - Events that change the characters' situation or the story's direction
 - Key decisions or commitments made by characters
 - New locations, setting details, or world-building facts
@@ -110,10 +112,10 @@ PRESERVE messages that introduce new information such as:
 - Deaths, departures, or arrivals
 
 EXCLUDE messages that are:
-- Conversational scaffolding — questions, comments, small talk, or reactions that don't themselves contain new facts (even if they prompt a reveal in the next message)
+- Conversational scaffolding — questions, comments, or small talk that don't themselves reveal new facts or develop relationships (even if they prompt a reveal in the next message)
 - Redundant with another already-remembered summary (marked Long-term: Yes)
 - Purely transitional actions with no new narrative content
-- Minor reactions or internal thoughts that don't reveal anything new
+- Minor reactions or internal thoughts that don't reveal anything new or shift any dynamic
 
 This is an ongoing story — you cannot know for certain what will matter later. When a summary contains new information, preserve it even if it seems minor now.
 
