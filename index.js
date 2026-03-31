@@ -1903,7 +1903,7 @@ class MemoryEditInterface {
             await summaryQueue.summarize(this.get_sorted_selection());  // summarize in ascending order
         })
         this.$content.find(`#bulk_auto_ltm`).on('click', async () => {
-            await automated_long_term_memory(null, null, this.get_sorted_selection());
+            await automated_long_term_memory(this.get_sorted_selection());
             this.update_table();
         })
         this.$content.find(`#bulk_delete`).on('click', () => {
@@ -3717,15 +3717,14 @@ function build_ltm_summary_lines(indexes) {
     }
     return { summary_lines, valid_indexes };
 }
-async function automated_long_term_memory(scope_override=null, end_index=null, indexes=null) {
+async function automated_long_term_memory(indexes=null, end_index=null) {
     // Use an LLM to identify critically important summaries and mark them as long-term memories.
-    // scope_override: if provided, ignores the scope setting ('all', 'new', 'last_n')
-    // end_index: if provided, treat this as the latest message (inclusive) instead of the end of the chat
     // indexes: if provided, analyse exactly these message indexes instead of deriving a scope window
+    // end_index: if provided, treat this as the latest message (inclusive) instead of the end of the chat
     let chat = getContext().chat;
 
     // Step 1: Collect summaries — either from explicit indexes or by deriving a scope window
-    let scope_indexes = indexes ?? collect_ltm_scope_indexes(scope_override ?? get_settings('automated_memory_scope'), end_index);
+    let scope_indexes = indexes ?? collect_ltm_scope_indexes(get_settings('automated_memory_scope'), end_index);
     let { summary_lines, valid_indexes } = build_ltm_summary_lines(scope_indexes);
 
     if (summary_lines.length === 0) {
