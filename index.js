@@ -98,7 +98,7 @@ const default_automated_memory_prompt = `You are a narrative analysis assistant.
 
 Your task: decide which of these messages should be preserved as long-term memories. A message is worth preserving if it introduces important characters, advances the plot, contains a key decision or revelation, or establishes facts the story depends on. Do NOT include messages that are routine actions, filler, minor reactions, or repeat information already covered by another remembered message.
 
-nIMPORTANT: Be selective. Include messages that contain significant character development, major relationship changes, key decisions, important revelations, or events that later story developments depend on. Do not include routine conversations, minor emotional reactions, repeated information, or moments where nothing new is introduced. When in doubt, leave it out.
+IMPORTANT: Be selective. Include messages that contain significant character development, major relationship changes, key decisions, important revelations, or events that later story developments depend on. Do not include routine conversations, minor emotional reactions, repeated information, or moments where nothing new is introduced. When in doubt, leave it out.
 
 Respond with ONLY the message numbers as a comma-separated list. Do not include any other text, explanation, or formatting. If no messages qualify, respond with the single word NONE.
 `
