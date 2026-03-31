@@ -3455,10 +3455,29 @@ class SummaryQueue {
         }
 
         let connection = ctx.ConnectionManagerRequestService.getProfile(profile);
-        console.warn('connection properties:', connection);
         if (!connection) {
             throw new Error(`No connection found for profile: ${profile}`);
         }
+        console.warn('[summarize_text] connection profile:', connection);
+        console.warn('[summarize_text] overridePayload fields (from profile):', {
+            custom_url: connection['api-url'],
+            vertexai_region: connection['api-url'],
+            zai_endpoint: connection['api-url'],
+            siliconflow_endpoint: connection['api-url'],
+            model: connection.model,
+            preset: connection.preset,
+            proxy: connection.proxy,
+        });
+        console.warn('[summarize_text] chatCompletionSettings (relevant fields):', {
+            chat_completion_source: ctx.chatCompletionSettings?.chat_completion_source,
+            custom_url: ctx.chatCompletionSettings?.custom_url,
+            custom_include_body: ctx.chatCompletionSettings?.custom_include_body,
+            custom_exclude_body: ctx.chatCompletionSettings?.custom_exclude_body,
+            custom_include_headers: ctx.chatCompletionSettings?.custom_include_headers,
+            vertexai_region: ctx.chatCompletionSettings?.vertexai_region,
+            zai_endpoint: ctx.chatCompletionSettings?.zai_endpoint,
+            siliconflow_endpoint: ctx.chatCompletionSettings?.siliconflow_endpoint,
+        });
 
         let result = await ctx.ConnectionManagerRequestService.sendRequest(profile, messages)
 
