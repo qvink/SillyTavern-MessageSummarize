@@ -3664,9 +3664,8 @@ async function remember_auto_message_toggle(indexes=null, value=null) {
     }
     refresh_memory();
 }
-function collect_long_term_memory_summaries(scope, end_index) {
-    // Collect all message summaries within the scope window, returned as parallel arrays of
-    // formatted summary lines and their corresponding chat indexes.
+function collect_ltm_scope_indexes(scope, end_index) {
+    // Return all chat indexes within the scope window (not filtered by whether they have a summary).
     let chat = getContext().chat;
     let last_index = end_index ?? chat.length - 1;
     let start_index = 0;
@@ -3694,17 +3693,23 @@ function collect_long_term_memory_summaries(scope, end_index) {
         }
     }
 
-    // Create a list of formatted summary lines and their corresponding indexes to pass to the LLM
+    let indexes = [];
+    for (let i = start_index; i <= last_index; i++) indexes.push(i);
+    return indexes;
+}
+function build_ltm_summary_lines(indexes) {
+    // Given a list of chat indexes, return formatted summary lines and the subset of indexes
+    // that actually have a summary, for passing to the LLM.
+    let chat = getContext().chat;
     let summary_lines = [];
     let valid_indexes = [];
-    for (let i = start_index; i <= last_index; i++) {
+    for (let i of indexes) {
         let memory = get_data(chat[i], 'memory');
         if (!memory) continue;
         let is_remembered = (get_data(chat[i], 'remember') || get_data(chat[i], 'remember_auto')) ? 'Yes' : 'No';
         summary_lines.push(`Message ${i} | Long-term: ${is_remembered} | Summary: ${memory}`);
         valid_indexes.push(i);
     }
-
     return { summary_lines, valid_indexes };
 }
 async function analyze_long_term_memory_summary_chunk(chunk_lines, chunk_indexes, prompt_template, profile) {
@@ -3738,15 +3743,16 @@ async function analyze_long_term_memory_summary_chunk(chunk_lines, chunk_indexes
     let chunk_valid_set = new Set(chunk_indexes);
     return parsed_numbers.filter(n => chunk_valid_set.has(n));
 }
-async function automated_long_term_memory(scope_override=null, end_index=null) {
+async function automated_long_term_memory(scope_override=null, end_index=null, indexes=null) {
     // Use an LLM to identify critically important summaries and mark them as long-term memories.
     // scope_override: if provided, ignores the scope setting ('all', 'new', 'last_n')
     // end_index: if provided, treat this as the latest message (inclusive) instead of the end of the chat
+    // indexes: if provided, analyse exactly these message indexes instead of deriving a scope window
     let chat = getContext().chat;
-    let scope = scope_override ?? get_settings('automated_memory_scope');
 
-    // Step 1: Collect summaries within the scope window
-    let { summary_lines, valid_indexes } = collect_long_term_memory_summaries(scope, end_index);
+    // Step 1: Collect summaries — either from explicit indexes or by deriving a scope window
+    let scope_indexes = indexes ?? collect_ltm_scope_indexes(scope_override ?? get_settings('automated_memory_scope'), end_index);
+    let { summary_lines, valid_indexes } = build_ltm_summary_lines(scope_indexes);
 
     if (summary_lines.length === 0) {
         log('No summaries found for automated long-term memory analysis.');
