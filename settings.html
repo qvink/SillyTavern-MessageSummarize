@@ -314,10 +314,7 @@
                 <hr>
                 <h4 class="textAlignCenter">Automated Long-Term Memory <i class="fa-solid fa-info-circle" title="Settings that control how automated long-term memory analysis works when triggered."></i></h4>
 
-                <div class="flex-container justifyspacebetween alignitemscenter">
-                    <button id="edit_automated_memory_prompt" class="menu_button flex1" title="Edit the prompt used to analyze summaries and identify critically important long-term memories."><span>Edit</span></button>
-                    <button id="process_all_ltm" class="menu_button flex1" title="Analyze all summarized messages and tag critically important ones as long-term memories. When scope is set to 'Process All Memories', all messages are sent in a single batch. Otherwise, messages are processed in batches using the 'Process Last N Memories' value as the chunk size. Respects the Allow Long-Term Memory Removal setting."><span>Process All Memories</span></button>
-                </div>
+                <button id="edit_automated_memory_prompt" class="menu_button" title="Edit the prompt used to analyze summaries and identify critically important long-term memories."><span>Edit Prompt</span></button>
 
                 <label title="When enabled, the analysis can also remove the long-term memory flag from previously tagged messages that are no longer considered important in the broader context of the narrative." class="checkbox_label">
                     <input id="automated_memory_allow_removal" type="checkbox" />

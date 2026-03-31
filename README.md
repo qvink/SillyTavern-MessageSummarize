@@ -113,9 +113,8 @@ If instead you enable `Always Separate`, marked summaries will always be put in 
 
 #### Automated Long-term Memory
 - This section controls how the extension automatically identifies and tags important summaries as `long-term` memories using an LLM.
-- `Process All Memories` triggers an immediate analysis of all summaries. When the scope is set to `Process All Memories`, everything is sent to the LLM in a single batch. For other scope settings, messages are processed in batches using the `Process Last N Memories` value as the chunk size.
 - The `Scope` setting determines which messages are included when analysis is triggered — either automatically or via the message button:
-  - `Process All Memories` sends every summarized message to the LLM in a single batch.
+  - `Process All Memories` sends every summarized message to the LLM.
   - `Process New Memories` only analyzes messages from the most recent `long-term` memory entry up to the latest message, making it efficient for incremental updates.
   - `Process Last N Memories` analyzes only the last N summarized messages, useful for large chats where processing everything would be expensive.
 - `Allow Long-Term Memory Removal` allows the LLM to also un-mark previously tagged `long-term` memories that are no longer considered important in the broader context. When disabled, analysis can only add new `long-term` memories, never remove existing ones.

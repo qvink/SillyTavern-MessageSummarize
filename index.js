@@ -4469,7 +4469,6 @@ function initialize_settings_listeners() {
 </ul>`
         get_user_setting_text_input('automated_memory_prompt', t`Edit Automated Memory Prompt`, description)
     })
-    bind_function('#process_all_ltm', () => automated_long_term_memory('all'));
     bind_function('#toggle_chat_memory', () => toggle_chat_enabled(), false);
     bind_function('#edit_memory_state', () => memoryEditInterface.show())
     bind_function("#refresh_memory", () => refresh_memory());
