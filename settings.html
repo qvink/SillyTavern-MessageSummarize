@@ -319,16 +319,6 @@
                     <button id="process_all_ltm" class="menu_button flex1" title="Analyze all summarized messages and tag critically important ones as long-term memories. When scope is set to 'Process All Memories', all messages are sent in a single batch. Otherwise, messages are processed in batches using the 'Process Last N Memories' value as the chunk size. Respects the Allow Long-Term Memory Removal setting."><span>Process All Memories</span></button>
                 </div>
 
-                <label title="Controls how selective the LLM is when choosing which messages to preserve. High keeps only major turning points, Medium keeps significant developments, Low preserves most meaningful content. None adds no additional guidance to the prompt." class="checkbox_label">
-                    <span>Importance Threshold: </span>
-                    <select id="automated_memory_importance" class="text_pole inline_setting">
-                        <option value="none">None</option>
-                        <option value="high">High</option>
-                        <option value="medium">Medium</option>
-                        <option value="low">Low</option>
-                    </select>
-                </label>
-
                 <label title="When enabled, the analysis can also remove the long-term memory flag from previously tagged messages that are no longer considered important in the broader context of the narrative." class="checkbox_label">
                     <input id="automated_memory_allow_removal" type="checkbox" />
                     <span>Allow Long-Term Memory Removal</span>

@@ -98,16 +98,10 @@ const default_automated_memory_prompt = `You are a narrative analysis assistant.
 
 Your task: decide which of these messages should be preserved as long-term memories. A message is worth preserving if it introduces important characters, advances the plot, contains a key decision or revelation, or establishes facts the story depends on. Do NOT include messages that are routine actions, filler, minor reactions, or repeat information already covered by another remembered message.
 
-{{importance}}
+nIMPORTANT: Be selective. Include messages that contain significant character development, major relationship changes, key decisions, important revelations, or events that later story developments depend on. Do not include routine conversations, minor emotional reactions, repeated information, or moments where nothing new is introduced. When in doubt, leave it out.
 
 Respond with ONLY the message numbers as a comma-separated list. Do not include any other text, explanation, or formatting. If no messages qualify, respond with the single word NONE.
 `
-const automated_memory_importance_prompts = {
-    none: '',
-    high: `\nIMPORTANT: Be very strict. Only select messages where ALL of the following are true: the message changes the direction of the story, the information cannot be found in any other message, and removing it would make the plot impossible to follow. Do not select routine character development, casual relationship moments, or incremental progress. When in doubt, leave it out.`,
-    medium: `\nIMPORTANT: Be selective. Include messages that contain significant character development, major relationship changes, key decisions, important revelations, or events that later story developments depend on. Do not include routine conversations, minor emotional reactions, repeated information, or moments where nothing new is introduced. When in doubt, leave it out.`,
-    low: `\nIMPORTANT: Be inclusive. Include any message that contains unique information, a meaningful character interaction, a noteworthy detail, or an event that adds to the story. Only exclude messages that are clearly trivial filler, simple greetings, or completely redundant with another already-remembered message. When in doubt, include it.`,
-}
 const default_long_template = `[Following is a list of events that occurred in the past]:\n{{${generic_memories_macro}}}\n`
 const default_short_template = `[Following is a list of recent events]:\n{{${generic_memories_macro}}}\n`
 const default_summary_macros = {  // default set of macros for the summary prompt.
@@ -136,7 +130,6 @@ const default_settings = {
     automated_memory_scope: 'all',   // 'all' = all messages, 'new' = since last long-term memory, 'last_n' = last N messages
     automated_memory_last_n: 50,   // number of messages to process when scope is 'last_n'
     automated_memory_allow_removal: false,   // whether the analysis can also un-mark existing long-term memories
-    automated_memory_importance: 'medium',   // importance threshold: none, high, medium, low
     automated_memory_auto: false,   // whether to automatically trigger LTM analysis every N messages
     automated_memory_auto_interval: 25,   // how many new messages between automatic LTM runs (minimum 10)
 
@@ -3665,12 +3658,11 @@ function collect_long_term_memory_summaries(scope, end_index) {
 
     return { summary_lines, valid_indexes };
 }
-async function analyze_long_term_memory_summary_chunk(chunk_lines, chunk_indexes, prompt_template, importance_text, profile) {
+async function analyze_long_term_memory_summary_chunk(chunk_lines, chunk_indexes, prompt_template, profile) {
     // Send a single chunk of summary lines to the LLM and return the confirmed chat indexes.
     // Returns null on failure.
     let prompt_text = prompt_template
-        .replace('{{summaries}}', chunk_lines.join('\n'))
-        .replace('{{importance}}', importance_text);
+        .replace('{{summaries}}', chunk_lines.join('\n'));
     let messages = [{role: 'system', content: prompt_text}];
 
     let result;
@@ -3748,7 +3740,6 @@ async function automated_long_term_memory(scope_override=null, end_index=null) {
 
     // Step 4: Process each chunk
     let prompt_template = get_settings('automated_memory_prompt');
-    let importance_text = automated_memory_importance_prompts[get_settings('automated_memory_importance') || 'none'] || '';
     let all_confirmed = [];
     let had_error = false;
 
@@ -3765,7 +3756,7 @@ async function automated_long_term_memory(scope_override=null, end_index=null) {
         }
 
         debug(`Running automated LTM analysis${use_chunking ? ` (batch ${c + 1}/${total_chunks})` : ''}...`);
-        let confirmed = await analyze_long_term_memory_summary_chunk(chunk.lines, chunk.indexes, prompt_template, importance_text, profile);
+        let confirmed = await analyze_long_term_memory_summary_chunk(chunk.lines, chunk.indexes, prompt_template, profile);
 
         if (confirmed === null) {
             had_error = true;
@@ -4476,7 +4467,6 @@ function initialize_settings_listeners() {
 <ul style="text-align: left; font-size: smaller;">
     <li>This prompt is sent to the LLM with all message summaries to identify critically important long-term memories.</li>
     <li><b>{{summaries}}</b> will be replaced with the formatted list of message summaries.</li>
-    <li><b>{{importance}}</b> will be replaced with the importance threshold guidance (based on the Importance Threshold setting).</li>
 </ul>`
         get_user_setting_text_input('automated_memory_prompt', t`Edit Automated Memory Prompt`, description)
     })
@@ -4554,7 +4544,6 @@ function initialize_settings_listeners() {
     bind_setting('input[name="automated_memory_scope"]', 'automated_memory_scope', 'text');
     bind_setting('#automated_memory_last_n', 'automated_memory_last_n', 'number');
     bind_setting('#automated_memory_allow_removal', 'automated_memory_allow_removal', 'boolean');
-    bind_setting('#automated_memory_importance', 'automated_memory_importance', 'text');
     bind_setting('#automated_memory_auto', 'automated_memory_auto', 'boolean');
     bind_setting('#automated_memory_auto_interval', 'automated_memory_auto_interval', 'number');
 
