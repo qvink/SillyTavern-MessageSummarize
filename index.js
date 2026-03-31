@@ -3454,36 +3454,6 @@ class SummaryQueue {
             error(`Text to summarize (${token_size}) exceeds summary context size (${context_size}).`);
         }
 
-        let connection = ctx.ConnectionManagerRequestService.getProfile(profile);
-        if (!connection) {
-            throw new Error(`No connection found for profile: ${profile}`);
-        }
-        console.warn('[summarize_text] connection profile:', connection);
-        console.warn('[summarize_text] overridePayload fields (from profile):', {
-            custom_url: connection['api-url'],
-            vertexai_region: connection['api-url'],
-            zai_endpoint: connection['api-url'],
-            siliconflow_endpoint: connection['api-url'],
-            model: connection.model,
-            preset: connection.preset,
-            proxy: connection.proxy,
-        });
-        console.warn('[summarize_text] chatCompletionSettings (relevant fields):', {
-            chat_completion_source: ctx.chatCompletionSettings?.chat_completion_source,
-            custom_url: ctx.chatCompletionSettings?.custom_url,
-            custom_include_body: ctx.chatCompletionSettings?.custom_include_body,
-            custom_exclude_body: ctx.chatCompletionSettings?.custom_exclude_body,
-            custom_include_headers: ctx.chatCompletionSettings?.custom_include_headers,
-        });
-
-        const presetManager = ctx.getPresetManager?.('openai');
-        const preset = presetManager?.getCompletionPresetByName?.(connection.preset);
-        console.warn('[summarize_text] preset fields (chat_completion_source may override settings):', {
-            name: preset?.name,
-            chat_completion_source: preset?.chat_completion_source,
-            temperature: preset?.temperature,
-        });
-
         let result = await ctx.ConnectionManagerRequestService.sendRequest(profile, messages)
 
         // trim incomplete sentences if set in ST settings
