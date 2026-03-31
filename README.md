@@ -114,7 +114,6 @@ If instead you enable `Always Separate`, marked summaries will always be put in 
 #### Automated Long-term Memory
 - This section controls how the extension automatically identifies and tags important summaries as `long-term` memories using an LLM.
 - `Process All Memories` triggers an immediate analysis of all summaries. When the scope is set to `Process All Memories`, everything is sent to the LLM in a single batch. For other scope settings, messages are processed in batches using the `Process Last N Memories` value as the chunk size.
-- The `Importance Threshold` controls how selective the LLM is when deciding what to preserve. `High` keeps only major turning points and critical revelations. `Medium` keeps significant developments and key decisions. `Low` preserves most meaningful content. `None` adds no additional guidance beyond the base prompt. These are based on instructions to the LLM, and as such, subject to the skill of the LLM to understand how to determine critical and significant.
 - The `Scope` setting determines which messages are included when analysis is triggered — either automatically or via the message button:
   - `Process All Memories` sends every summarized message to the LLM in a single batch.
   - `Process New Memories` only analyzes messages from the most recent `long-term` memory entry up to the latest message, making it efficient for incremental updates.

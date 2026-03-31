@@ -3615,6 +3615,45 @@ async function remember_message_toggle(indexes=null, value=null) {
     }
     refresh_memory();
 }
+async function remember_auto_message_toggle(indexes=null, value=null) {
+    // Toggle the "remember_auto" (automated long-term memory) status of a set of messages.
+    // Messages already manually tagged with 'remember' are never touched.
+    let context = getContext();
+
+    if (!Array.isArray(indexes)) {
+        indexes = [indexes]
+    } else if (indexes === null) {
+        indexes = [Math.max(context.chat.length-1, 0)]
+    }
+
+    // Filter out any messages already manually marked as long-term
+    indexes = indexes.filter(i => !get_data(context.chat[i], 'remember'));
+
+    let summarize = [];
+
+    function set(index, val) {
+        let message = context.chat[index]
+        set_data(message, 'remember_auto', val);
+        set_data(message, 'exclude', false);
+
+        let memory = get_data(message, 'memory')
+        if (val && !memory) {
+            summarize.push(index)
+        }
+        debug(`Set message ${index} remember_auto status: ${val}`);
+    }
+
+    function check(index) {
+        return get_data(context.chat[index], 'remember_auto')
+    }
+
+    toggle_memory_value(indexes, value, check, set)
+
+    if (summarize.length > 0) {
+        await summaryQueue.summarize(summarize);
+    }
+    refresh_memory();
+}
 function collect_long_term_memory_summaries(scope, end_index) {
     // Collect all message summaries within the scope window, returned as parallel arrays of
     // formatted summary lines and their corresponding chat indexes.
@@ -3782,15 +3821,15 @@ async function automated_long_term_memory(scope_override=null, end_index=null) {
     let confirmed_set = new Set(all_confirmed);
 
     // Count only messages not already marked before toggling, so the toast reflects newly marked messages
-    let newly_marked_count = all_confirmed.filter(i => !get_data(chat[i], 'remember')).length;
-    await remember_message_toggle(all_confirmed, true);
+    let newly_marked_count = all_confirmed.filter(i => !get_data(chat[i], 'remember') && !get_data(chat[i], 'remember_auto')).length;
+    await remember_auto_message_toggle(all_confirmed, true);
 
     let removed_count = 0;
     if (get_settings('automated_memory_allow_removal')) {
-        let to_remove = valid_indexes.filter(i => !confirmed_set.has(i) && get_data(chat[i], 'remember'));
+        let to_remove = valid_indexes.filter(i => !confirmed_set.has(i) && get_data(chat[i], 'remember_auto'));
         if (to_remove.length > 0) {
             debug(`Automated LTM removing long-term flag from messages: ${to_remove.join(', ')}`);
-            await remember_message_toggle(to_remove, false);
+            await remember_auto_message_toggle(to_remove, false);
             removed_count = to_remove.length;
         }
     }
