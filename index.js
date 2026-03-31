@@ -49,6 +49,7 @@ const PROGRESS_BAR_ID = `${MODULE_NAME}_progress_bar`;
 const css_message_div = `qvink_memory_display`
 const css_short_memory = `qvink_short_memory`
 const css_long_memory = `qvink_long_memory`
+const css_long_auto_memory = `qvink_long_auto_memory`
 const css_remember_memory = `qvink_old_memory`
 const css_exclude_memory = `qvink_exclude_memory`
 const css_lagging_memory = `qvink_lagging_memory`
@@ -1424,13 +1425,17 @@ function get_message_div(index) {
 }
 function get_summary_style_class(message) {
     let include = get_data(message, 'include');
-    let remember = get_data(message, 'remember') || get_data(message, 'remember_auto');
+    let remember = get_data(message, 'remember');
+    let remember_auto = get_data(message, 'remember_auto');
     let exclude = get_data(message, 'exclude');  // force-excluded by user
     let lagging = get_data(message, 'lagging');  // not injected yet
 
     let style = ""
     if (remember && include) {  // marked to be remembered and included in memory anywhere
         style = css_long_memory
+    }
+    else if (remember_auto && include) {  // marked to be remembered automatically and included in memory anywhere
+        style = css_long_auto_memory
     } else if (include === "short") {  // not marked to remember, but included in short-term memory
         style = css_short_memory
     } else if (remember) {  // marked to be remembered but not included in memory

@@ -2,6 +2,7 @@
     --qm-default: grey;
     --qm-short: #2E8B57;
     --qm-long: #4682B4;
+    --qm-long-auto: #46b4b0;
     --qm-old: #8B0000;
     --qm-excluded: #555;
     --qm-redundant-opacity: 50%;
@@ -79,6 +80,14 @@ By default, text is greyed to indicate that is it not injected.
 }
 .qvink_long_memory.qvink_lagging_memory {
     color: rgba(from var(--qm-long) r g b / var(--qm-redundant-opacity));
+    text-shadow: none;
+}
+/* to style long-term memories. */
+.qvink_long_auto_memory {
+    color: var(--qm-long-auto);
+}
+.qvink_long_auto_memory.qvink_lagging_memory {
+    color: rgba(from var(--qm-long-auto) r g b / var(--qm-redundant-opacity));
     text-shadow: none;
 }
 /* to style memories marked for long-term, but are past the context limit */
