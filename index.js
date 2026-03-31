@@ -93,33 +93,33 @@ Following is a history of messages for context:
 Following is the message to summarize:
 {{message}}
 `
-const default_automated_memory_prompt = `You are a narrative analysis assistant for an ongoing fictional roleplay. Your task: decide which message summaries should be preserved as long-term memories. This is an ongoing story — you cannot know for certain what will matter later, so err on the side of preserving anything that could be referenced or built upon.
+const default_automated_memory_prompt = `You are a narrative analysis assistant for an ongoing fictional roleplay. Your task: decide which message summaries should be preserved as long-term memories.
 
-PRESERVE messages that contain any of the following:
-- A new character appearing or being introduced
-- Characters meeting or interacting for the first time
+The key test for each summary: does it introduce a fact, name, relationship detail, backstory, or situation change that would be LOST if this summary were removed? If removing it would leave no gap in the story's record, it is not worth preserving.
+
+PRESERVE messages that introduce new information such as:
+- A character's name, identity, or backstory being revealed
+- New facts about a character's situation, history, or motivations
 - Relationship developments (friendships, conflicts, romance, alliances, betrayals, trust shifts)
-- Plot-advancing events or actions that change the story's direction
+- Events that change the characters' situation or the story's direction
 - Key decisions or commitments made by characters
-- Revelations, discoveries, or new information about characters or the world
-- New locations, setting changes, or world-building details
+- New locations, setting details, or world-building facts
 - Conflicts being introduced or resolved
 - Changes in a character's status, abilities, or position
 - Promises, agreements, or plans characters make
 - Deaths, departures, or arrivals
-- Significant emotional turning points that alter character dynamics
-- The opening or setup of a new scene, arc, or situation
 
-EXCLUDE only messages that are:
+EXCLUDE messages that are:
+- Conversational scaffolding — questions, comments, small talk, or reactions that don't themselves contain new facts (even if they prompt a reveal in the next message)
 - Redundant with another already-remembered summary (marked Long-term: Yes)
-- Purely transitional with no narrative content (e.g., just moving between locations without anything happening)
-- Minor reactions or internal thoughts that don't reveal anything new or change anything
+- Purely transitional actions with no new narrative content
+- Minor reactions or internal thoughts that don't reveal anything new
+
+This is an ongoing story — you cannot know for certain what will matter later. When a summary contains new information, preserve it even if it seems minor now.
 
 Below are the message summaries to analyze. Each line has this format: Message NUMBER | Long-term: Yes/No | Summary: TEXT
 
 {{summaries}}
-
-When in doubt, preserve the memory. It is better to remember something that turns out minor than to forget something the story depends on later.
 
 Respond with ONLY the message numbers as a comma-separated list. Do not include any other text, explanation, or formatting. If no messages qualify, respond with the single word NONE.
 `
