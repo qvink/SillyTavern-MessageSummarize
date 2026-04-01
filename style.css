@@ -227,14 +227,13 @@ dialog:has(#qvink_memory_state_interface) {
     flex-direction: column;
 }
 #qvink_memory_state_interface #filter_bar {
-    margin: 1em 0;  /* Filter bar vertical margins */
+    margin: 0.5em 0;  /* Filter bar vertical margins */
 }
-#qvink_memory_state_interface #filter_bar .qvink_interface_card button {
-    width: 100%;
+#qvink_memory_state_interface .qvink_interface_card {
+    margin: 0;
 }
-#qvink_memory_state_interface #filter_bar .qvink_interface_card label {
-    width: fit-content;
-    margin: auto;
+#qvink_memory_state_interface .qvink_interface_card button {
+    min-width: 2em;
 }
 
 /* Edit interface message table */
@@ -292,9 +291,6 @@ dialog:has(#qvink_memory_state_interface) {
 
 
 /* Edit interface action buttons */
-#qvink_memory_state_interface #bulk_actions {
-    gap: 0px 8px;
-}
 #qvink_memory_state_interface #bulk_actions > div {
     flex: auto;
 }

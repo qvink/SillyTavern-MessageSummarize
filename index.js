@@ -1649,14 +1649,14 @@ class MemoryEditInterface {
     filter_bar = {
         "short_term": {
             "title": "Summaries currently in short-term memory",
-            "display": "Short-Term",
+            "display": "Short",
             "check": (msg) => get_data(msg, 'include') === "short",
             "default": true,
             "count": 0
         },
         "long_term": {
             "title": "Summaries marked for long-term memory, even if they are currently in short-term memory or out of context",
-            "display": "Long-Term",
+            "display": "Long",
             "check": (msg) => get_data(msg, 'remember'),
             "default": true,
             "count": 0
@@ -1691,7 +1691,7 @@ class MemoryEditInterface {
         },
         "no_summary": {
             "title": "Messages without a summary",
-            "display": "No Summary",
+            "display": "Empty",
             "check": (msg) => !get_data(msg, 'memory'),
             "default": false,
             "count": 0
@@ -1721,7 +1721,7 @@ class MemoryEditInterface {
     </label>
 </div>
 
-<div id="filter_bar" class="flex-container justifyspacebetween alignitemscenter"></div>
+<div id="filter_bar" class="flex-container"></div>
 
 <hr>
 <div id="progress_bar"></div>
@@ -1807,28 +1807,33 @@ class MemoryEditInterface {
         this.update_filter_counts()
         for (let [id, data] of Object.entries(this.filter_bar)) {
             let select_button_id = `select_${id}`
-            let filter_checkbox_id = `filter_${id}`
+            let filter_button_id = `filter_${id}`
             let checked = this.settings[id] ?? data.default
 
             let $el = $(`
 <div class="flex1 qvink_interface_card">
-    <label class="checkbox_label" title="${data.title}">
-        <input id="${filter_checkbox_id}" type="checkbox" ${checked ? "checked" : ""}/>
+    <label class="checkbox_label"  title="${data.title}">
+    <div class="flex1" style="flex-direction: column;">
         <span>${data.display}</span>
         <span>(${data.count})</span>
+        <div class="flex-container" style="justify-content: center; margin-top: 5px">
+            <button id="${filter_button_id}" class="menu_button flex1 fa-solid fa-filter ${checked ? "button_highlight" : ""}" title="Filter"></button>
+            <button id="${select_button_id}" class="menu_button flex1 fa-solid fa-check" title="Select"></button>
+        </div>
+    </div>
     </label>
-    <button id="${select_button_id}" class="menu_button flex1" title="Mass select">Select</button>
 </div>
             `)
 
             this.$content.find('#filter_bar').append($el)  // append to filter bar
 
             let $select = $el.find("#"+select_button_id)
-            let $filter = $el.find("#"+filter_checkbox_id)
+            let $filter = $el.find("#"+filter_button_id)
 
-            data.filtered = () => $filter.is(':checked')
+            data.filtered = () => $filter.hasClass("button_highlight")
 
-            $filter.on('change', () => {
+            $filter.on('click', () => {
+                $filter.toggleClass('button_highlight')
                 this.update_filters()
                 this.save_settings();
             })
