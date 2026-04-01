@@ -28,9 +28,10 @@
     width: 100%;
 }
 
-/* add a scrollbar to the popout */
+/* popout */
 #qmExtensionPopout {
-    overflow: auto;
+    overflow: auto;  /* add scrollbar */
+    max-height: calc(100dvh - var(--topBarBlockSize));  /* increase height */
 }
 
 /* Dropdowns in a line of text */
