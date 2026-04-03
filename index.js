@@ -6,7 +6,6 @@ import {
     download,
     parseJsonFile,
     stringToRange,
-    waitUntilCondition
 } from '../../../utils.js';
 import {
     animation_duration,
@@ -14,7 +13,6 @@ import {
     saveSettingsDebounced,
     getCharacterCardFields,
     messageFormatting,
-    generateRaw,
     createRawPrompt,
     getMaxContextSize,
     streamingProcessor,
@@ -24,13 +22,12 @@ import {
     extension_prompt_types,
     CONNECT_API_MAP,
     main_api,
-    online_status,
     chat_metadata,
 } from '../../../../script.js';
 import { getContext, extension_settings, saveMetadataDebounced} from '../../../extensions.js';
 import { formatInstructModeChat, formatInstructModePrompt } from '../../../instruct-mode.js';
 import { selected_group, openGroupId } from '../../../group-chats.js';
-import { loadMovingUIState, power_user } from '../../../power-user.js';
+import { loadMovingUIState } from '../../../power-user.js';
 import { dragElement } from '../../../RossAscends-mods.js';
 import { debounce_timeout } from '../../../constants.js';
 import { MacrosParser } from '../../../macros.js';
@@ -136,6 +133,8 @@ const default_settings = {
     injection_threshold_update_trigger_messages: 0,  // update threshold when this many new messages are sent
     injection_threshold_update_trigger_summaries: 0,  // update threshold when this many new summaries are ready
     injection_threshold_update_trigger_context: 0,  // update threshold when the last prompt reched this percent of max context
+
+    rolling_window: false, // whether we roll memories - in which case lot of other options below are ignored
 
     long_template: default_long_template,
     long_term_context_limit: 10,  // context size to use as long-term memory limit
@@ -3959,12 +3958,423 @@ globalThis.memory_intercept_messages = function (chat, _contextSize, _abort, typ
 };
 
 
+const SHORT_MEMORY_ROLLING_WINDOW_MARKER = "@@SHORT_MEMORY_ROLLING_WINDOW_MARKER@@";
+const LONG_MEMORY_ROLLING_WINDOW_MARKER = "@@LONG_MEMORY_ROLLING_WINDOW_MARKER@@";
+const SHORT_MEMORY_ROLLING_WINDOW_STARTOFHISTORY_MARKER = "@@SHORT_MEMORY_ROLLING_WINDOW_STARTOFHISTORY_MARKER@@";
+const SHORT_MEMORY_ROLLING_WINDOW_ENDOFHISTORY_MARKER = "@@SHORT_MEMORY_ROLLING_WINDOW_ENDOFHISTORY_MARKER@@";
+
+class RollingWindowProcessor {
+
+    ctx = null;
+    unmodified = null;
+
+    pre = null;
+    post = null;
+
+    messages = null;
+    messages_tokens = null;
+    last_message = null;
+
+    message_buffer = null;
+    message_buffer_tokens = null;
+    short_history_text = "";
+    short_history_tokens = 0;
+    short_history_token_space = 0;
+    short_history = [];
+    long_history_text = "";
+    long_history_tokens = 0;
+    long_history_token_space = 0;
+    long_history = [];
+
+    generated = false;
+
+    constructor(context, prompt) {
+        this.ctx = context;
+        this.unmodified = prompt;
+    }
+
+    process() {
+        let split = this.unmodified.split(SHORT_MEMORY_ROLLING_WINDOW_STARTOFHISTORY_MARKER)
+        this.pre = split[0];
+        let rest = split[1];
+        split = rest.split(SHORT_MEMORY_ROLLING_WINDOW_ENDOFHISTORY_MARKER)
+        this.messages = split[0];
+        this.messages_tokens = count_tokens(this.messages);
+        this.post = split[1];
+        this.message_buffer = this.messages;
+        this.message_buffer_tokens = count_tokens(this.messages);
+
+        if (!this._find_last_message()) {
+            return;
+        }
+
+        if (this.last_message === 0) {
+            // no history, return
+            return;
+        }
+
+        // initialize short history to just message above
+        this.short_history.push(this.last_message - 1);
+
+        if (this._process_long_memories()) {
+            this.generated = true;
+        }
+    }
+
+    format_output(long_history, short_history) {
+        let filtered_pre_long_history = this.pre.replace(LONG_MEMORY_ROLLING_WINDOW_MARKER, long_history);
+        let filtered_pre_history = filtered_pre_long_history.replace(SHORT_MEMORY_ROLLING_WINDOW_MARKER, short_history);
+        let filtered_post_long_history = this.post.replace(LONG_MEMORY_ROLLING_WINDOW_MARKER, long_history);
+        let filtered_post_history = filtered_post_long_history.replace(SHORT_MEMORY_ROLLING_WINDOW_MARKER, short_history);
+
+        return filtered_pre_history + this.message_buffer + filtered_post_history;
+    }
+
+
+    _find_last_message() {
+        if (this.ctx.chat.length > 0) {
+            for (let i = this.ctx.chat.length - 1; i--; i>=0) {
+                let m = this.ctx.chat[i];
+
+                if (m.is_system) {
+                    continue;
+                }
+
+                if (!this.message_buffer.includes(m.mes)) {
+                    this.last_message = i+1;
+                    break;
+                }
+            }
+
+            if (this.last_message)
+                return true;
+        }
+        // no history, do not generate
+        return false;
+    }
+
+    _shift_messages() {
+        while (this.last_message < this.ctx.chat.length) {
+            let message = this.ctx.chat[this.last_message];
+            if (message.is_system) {
+                // ignore system messages
+                this.last_message = this.last_message + 1;
+                continue;
+            }
+            let mesBufPos = this.message_buffer.indexOf(message.mes)
+            if (mesBufPos >= 0) {
+                // trim everything until mesBufPos
+                const pre = this.message_buffer.substring(0, mesBufPos);
+                this.message_buffer = this.message_buffer.substring(mesBufPos, this.message_buffer.length);
+                this.message_buffer = this.message_buffer.replace(message.mes, "")
+                this.message_buffer_tokens = count_tokens(this.message_buffer);
+                this.last_message = this.last_message + 1;
+
+                return count_tokens(pre + message.mes);
+            }
+            this.last_message = this.last_message + 1;
+        }
+        return -1;
+    }
+
+    _process_long_memories() {
+        if (!this._process_short_memories()) {
+            return false;
+        }
+
+        const long_history_token_limit = get_long_token_limit()
+        do {
+            // remove one message
+            const last_message = this.last_message;
+            const free_space = this._shift_messages();
+            if (free_space === 0) {
+                // unable to shift, return
+                return false;
+            }
+
+            // we now have free_space tokens space
+            this.long_history_token_space += free_space;
+
+            // insert any messages (should be only 1 or skipped) into short_history buffer
+            for (let i=this.last_message-1; i>=last_message; i--) {
+                let message = this.ctx.chat[i];
+                if (!get_data(message, 'memory')) continue; // no memory
+                if (get_data(message, 'lagging')) continue; // lagging - not injected yet
+                if (message.is_system) continue;
+                this.short_history.unshift(i);
+            }
+            this._generate_short_terms_to_fill_space();
+            if (this.short_history_tokens > this.short_history_token_space)
+                this._trim_short_history();
+
+            let first_long_memory = this._find_first_long_term_memory_above(this.short_history[this.short_history.length - 1]);
+
+            if (this.long_history.length === 0) {
+                if (first_long_memory === -1) {
+                    // nothing in long term
+                    return true;
+                }
+                this.long_history.push(first_long_memory);
+                this._generate_long_history();
+                if (this.long_history_tokens > this.long_history_token_space)
+                    this._trim_long_history();
+            } else {
+                if (first_long_memory !== -1) {
+                    const cstart_long_mes = this.long_history[0]-1;
+                    for (let i=cstart_long_mes; i>=first_long_memory; i--) {
+                        let message = this.ctx.chat[i];
+                        if (!get_data(message, 'memory')) continue; // no memory
+                        if (get_data(message, 'lagging')) continue; // lagging - not injected yet
+                        if (message.is_system) continue;
+                        if (get_data(message, 'include') !== "long") continue
+                        this.long_history.unshift(i);
+                    }
+                }
+            }
+            if (this.long_history.length > 0) {
+                const status = this._generate_long_terms_to_fill_space();
+
+                if (status === "DONE") {
+                    return true;
+                }
+                if (status === "FAIL") {
+                    return false;
+                }
+            }
+        } while (this.long_history_tokens < long_history_token_limit);
+
+        // we overfilled, trim
+        return this._trim_long_history();
+    }
+
+    _generate_long_terms_to_fill_space() {
+        const current_history = [...this.long_history];
+        let last_history = current_history[current_history.length - 1];
+        if (last_history === 0) {
+            // we have everything
+            return "DONE";
+        }
+
+        for (let i = last_history - 1; i >= 0; i--) {
+            let message = this.ctx.chat[i];
+            if (!get_data(message, 'memory')) continue; // no memory
+            if (get_data(message, 'lagging')) continue; // lagging - not injected yet
+            if (message.is_system) continue;
+            if (get_data(message, 'include') !== "long") continue
+
+            current_history.push(i);
+            let check_indexes = [...current_history]
+            // reverse the indexes so they are in chronological order
+            check_indexes.reverse();
+
+            let text = concatenate_summaries(check_indexes);
+            let template = get_settings('long_template');
+
+            // replace memories macro
+            let long_history = this.ctx.substituteParamsExtended(template, {[generic_memories_macro]: text});
+            let long_history_tokens = count_tokens(long_history);
+
+            if (long_history_tokens > this.long_history_token_space) {
+                // we overfilled and are done with previous version
+                if (current_history.length === 1) {
+                    // cant fit, leave unchanged and retry with bigger buffer
+                    return "CONTINUE";
+                }
+                this.long_history = current_history
+                this._generate_long_history();
+
+                return "CONTINUE";
+            }
+        }
+
+        this.long_history = current_history
+        this._generate_long_history();
+        return "DONE";
+    }
+
+    _process_short_memories() {
+        const short_history_token_limit = get_short_token_limit();
+
+        do {
+            const last_message = this.last_message;
+
+            // remove one message
+            const free_space = this._shift_messages();
+            if (free_space === 0) {
+                // unable to shift, return
+                return false;
+            }
+
+            // insert any messages (should be only 1 or skipped) into short_history buffer
+            for (let i=this.last_message-1; i>=last_message; i--) {
+                let message = this.ctx.chat[i];
+                if (message.is_system) continue;
+                if (!get_data(message, 'memory')) continue; // no memory
+                if (get_data(message, 'lagging')) continue; // lagging - not injected yet
+                this.short_history.unshift(i);
+            }
+
+            // we now have free_space tokens space
+            this.short_history_token_space += free_space;
+            const status = this._generate_short_terms_to_fill_space();
+
+            if (status === "DONE") {
+                return true;
+            }
+            if (status === "FAIL") {
+                return false;
+            }
+        } while (this.short_history_tokens < short_history_token_limit);
+
+        // we overfilled, trim
+        return this._trim_short_history();
+    }
+
+    _generate_short_terms_to_fill_space() {
+        const current_history = [...this.short_history];
+        let last_history = current_history[current_history.length - 1];
+        if (last_history === 0) {
+            // we have everything
+            return "DONE";
+        }
+
+        for (let i = last_history - 1; i >= 0; i--) {
+            let message = this.ctx.chat[i];
+            if (!get_data(message, 'memory')) continue; // no memory
+            if (get_data(message, 'lagging')) continue; // lagging - not injected yet
+            if (message.is_system) continue;
+
+            current_history.push(i);
+            let check_indexes = [...current_history]
+            // reverse the indexes so they are in chronological order
+            check_indexes.reverse();
+
+            let text = concatenate_summaries(check_indexes);
+            let template = get_settings('short_template');
+
+            // replace memories macro
+            let short_history = this.ctx.substituteParamsExtended(template, {[generic_memories_macro]: text});
+            let short_history_tokens = count_tokens(short_history);
+
+            if (short_history_tokens > this.short_history_token_space) {
+                // we overfilled and are done with previous version
+                if (current_history.length === 1) {
+                    // cant fit, leave unchanged and retry with bigger buffer
+                    return "CONTINUE";
+                }
+
+                this.short_history = current_history
+                this._generate_short_history();
+
+                return "CONTINUE";
+            }
+        }
+
+        this.short_history = current_history
+        this._generate_short_history();
+        return "DONE";
+    }
+
+    _trim_short_history() {
+        do {
+            if (this.short_history.length === 0) {
+                this.short_history_text = "";
+                this.short_history_tokens = 0;
+                return true;
+            }
+
+            this.short_history.pop();
+            this._generate_short_history();
+        } while (this.short_history_tokens > this.short_history_token_space);
+
+        return true;
+    }
+
+    _generate_short_history() {
+        if (this.short_history.length === 0) {
+            this.short_history_text = "";
+            this.short_history_tokens = 0;
+        } else {
+            let process_indexes = [...this.short_history]
+            // reverse the indexes so they are in chronological order
+            process_indexes.reverse();
+
+            let text = concatenate_summaries(process_indexes);
+            let template = get_settings('short_template');
+            // replace memories macro
+            this.short_history_text = this.ctx.substituteParamsExtended(template, {[generic_memories_macro]: text});
+            this.short_history_tokens = count_tokens(this.short_history_text);
+        }
+    }
+
+    _trim_long_history() {
+        do {
+            if (this.long_history.length === 0) {
+                this.long_history_text = "";
+                this.long_history_tokens = 0;
+                return true;
+            }
+
+            this.long_history.pop();
+            this._generate_long_history();
+        } while (this.long_history_tokens > this.long_history_token_space);
+
+        return true;
+    }
+
+    _generate_long_history() {
+        if (this.long_history.length === 0) {
+            this.long_history_text = "";
+            this.long_history_tokens = 0;
+        } else {
+            let process_indexes = [...this.long_history]
+            // reverse the indexes so they are in chronological order
+            process_indexes.reverse();
+
+            let text = concatenate_summaries(process_indexes);
+            let template = get_settings('long_template');
+            // replace memories macro
+            this.long_history_text = this.ctx.substituteParamsExtended(template, {[generic_memories_macro]: text});
+            this.long_history_tokens = count_tokens(this.long_history_text);
+        }
+    }
+
+    _find_first_long_term_memory_above(from_message) {
+        if (from_message === 0)
+            return -1;
+        for (let i=from_message-1; i>=0; i--) {
+            let message = this.ctx.chat[i];
+
+            if (!get_data(message, 'memory')) continue; // no memory
+            if (get_data(message, 'lagging')) continue; // lagging - not injected yet
+            if (message.is_system) continue;
+            if (get_data(message, 'include') !== "long") continue
+
+            return i;
+        }
+        return -1;
+    }
+
+}
+
+function update_prompt_with_rolling_memory(context, data) {
+    const processor = new RollingWindowProcessor(context, data.prompt);
+    processor.process();
+    if (processor.generated) {
+        data.prompt = processor.format_output(processor.long_history_text, processor.short_history_text);
+    } else {
+        data.prompt = processor.format_output("", "");
+    }
+}
+
 // Summarization
 function refresh_memory() {
     let ctx = getContext();
     if (!chat_enabled()) { // if chat not enabled, remove the injections
         ctx.setExtensionPrompt(`${MODULE_NAME}_long`, "");
         ctx.setExtensionPrompt(`${MODULE_NAME}_short`, "");
+        ctx.setExtensionPrompt(`${MODULE_NAME}_rw_end`, "");
+        ctx.setExtensionPrompt(`${MODULE_NAME}_rw_start`, "");
         return;
     }
 
@@ -3974,8 +4384,8 @@ function refresh_memory() {
     update_message_inclusion_flags()  // update the inclusion flags for all messages
 
     // get the filled out templates
-    let long_injection = get_long_memory();
-    let short_injection = get_short_memory();
+    let long_injection = !get_settings("rolling_window") ? get_long_memory() : LONG_MEMORY_ROLLING_WINDOW_MARKER;
+    let short_injection = !get_settings("rolling_window") ? get_short_memory() : SHORT_MEMORY_ROLLING_WINDOW_MARKER;
 
     let long_term_position = get_settings('long_term_position')
     let short_term_position = get_settings('short_term_position')
@@ -3989,6 +4399,11 @@ function refresh_memory() {
     // inject the memories into the templates, if they exist
     ctx.setExtensionPrompt(`${MODULE_NAME}_long`,  long_injection,  long_term_position, get_settings('long_term_depth'), get_settings('long_term_scan'), get_settings('long_term_role'));
     ctx.setExtensionPrompt(`${MODULE_NAME}_short`, short_injection, short_term_position, get_settings('short_term_depth'), get_settings('short_term_scan'), get_settings('short_term_role'));
+
+    if (get_settings("rolling_window")){
+        ctx.setExtensionPrompt(`${MODULE_NAME}_rw_start`, SHORT_MEMORY_ROLLING_WINDOW_STARTOFHISTORY_MARKER, extension_prompt_types.IN_CHAT, 10000);
+        ctx.setExtensionPrompt(`${MODULE_NAME}_rw_end`, SHORT_MEMORY_ROLLING_WINDOW_ENDOFHISTORY_MARKER, extension_prompt_types.IN_CHAT, 0);
+    }
 
     return `${long_injection}\n\n...\n\n${short_injection}`  // return the concatenated memory text
 }
@@ -4196,6 +4611,18 @@ async function on_chat_event(event=null, data=null) {
             scrollChatToBottom();
             break;
 
+        case "prompt_ready": {
+            if (data.dry)
+                return;
+            if (!chat_enabled()) break;  // if chat is disabled, do nothing
+
+            if (get_settings("rolling_window")) {
+                update_prompt_with_rolling_memory(context, data.data);
+                return;
+            }
+            break;
+        }
+
         default:
             if (!chat_enabled()) break;  // if chat is disabled, do nothing
             debug(`Unknown event: "${event}", refreshing memory`)
@@ -4281,6 +4708,7 @@ function initialize_settings_listeners() {
     bind_setting('#injection_threshold_update_trigger_summaries', 'injection_threshold_update_trigger_summaries', 'number')
     bind_setting('#injection_threshold_update_trigger_context', 'injection_threshold_update_trigger_context', 'number')
     bind_setting('#keep_last_user_message', 'keep_last_user_message', 'boolean');
+    bind_setting('#rolling_window', 'rolling_window', 'boolean');
 
     bind_setting('#short_term_position', 'short_term_position', 'number');
     bind_setting('#short_term_depth', 'short_term_depth', 'number');
@@ -4882,6 +5310,7 @@ jQuery(async function () {
     eventSource.on('groupSelected', set_character_enabled_button_states);
     eventSource.on(event_types.GROUP_UPDATED, set_character_enabled_button_states);
     eventSource.on(event_types.GENERATION_STARTED, (type, stuff, dry) => on_chat_event('before_message', {'type': type, 'dry': dry}));
+    eventSource.on(event_types.GENERATE_AFTER_COMBINE_PROMPTS, (data, stuff, dry) => on_chat_event('prompt_ready', {'data': data, 'dry': dry}));
 
     // Update extension config on these events
     let update_events = [event_types.PRESET_CHANGED, event_types.CONNECTION_PROFILE_LOADED, event_types.CONNECTION_PROFILE_UPDATED]
