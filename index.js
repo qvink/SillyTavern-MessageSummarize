@@ -27,13 +27,15 @@ import {
     main_api,
     online_status,
     chat_metadata,
+    messageFormatting,
+    getCharacterCardFields, setExtensionPrompt,
 } from '../../../../script.js';
 import { getContext, extension_settings, saveMetadataDebounced} from '../../../extensions.js';
 import { formatInstructModeChat, formatInstructModePrompt } from '../../../instruct-mode.js';
 import { selected_group, openGroupId } from '../../../group-chats.js';
 import { loadMovingUIState, power_user } from '../../../power-user.js';
 import { dragElement } from '../../../RossAscends-mods.js';
-import { debounce_timeout } from '../../../constants.js';
+import { debounce_timeout, inject_ids } from '../../../constants.js';
 import { MacrosParser } from '../../../macros.js';
 import { getRegexScripts, runRegexScript } from '../../../../scripts/extensions/regex/engine.js'
 import { itemizedPrompts } from '../../../../scripts/itemized-prompts.js'
@@ -154,6 +156,7 @@ const default_settings = {
     short_term_depth: 2,
     short_term_role: extension_prompt_roles.SYSTEM,
     short_term_scan: false,
+    short_term_rolling_window: false,
 
     // misc
     debug_mode: false,  // enable debug mode
@@ -3969,12 +3972,117 @@ globalThis.memory_intercept_messages = function (chat, _contextSize, _abort, typ
 };
 
 
+const SHORT_MEMORY_ROLLING_WINDOW_MARKER = "@@SHORT_MEMORY_ROLLING_WINDOW_MARKER@@";
+const SHORT_MEMORY_ROLLING_WINDOW_STARTOFHISTORY_MARKER = "@@SHORT_MEMORY_ROLLING_WINDOW_STARTOFHISTORY_MARKER@@";
+const SHORT_MEMORY_ROLLING_WINDOW_ENDOFHISTORY_MARKER = "@@SHORT_MEMORY_ROLLING_WINDOW_ENDOFHISTORY_MARKER@@";
+
+function update_prompt_with_rolling_short_memory(context, data) {
+    let originalPrompt = data.prompt;
+    let split = data.prompt.split(SHORT_MEMORY_ROLLING_WINDOW_MARKER)
+    let intro = split[0];
+    let rest = split[1];
+    split = rest.split(SHORT_MEMORY_ROLLING_WINDOW_STARTOFHISTORY_MARKER)
+    let preMessages = split[0];
+    let rest2 = split[1];
+    split = rest2.split(SHORT_MEMORY_ROLLING_WINDOW_ENDOFHISTORY_MARKER)
+    let messages = split[0];
+    let postMessage = split[1];
+
+    let lastMessage = undefined;
+    let short_history = "";
+    let messages_clipped = messages;
+
+    if (context.chat.length > 0) {
+        for (let i = context.chat.length - 1; i--; i>=0) {
+            let m = context.chat[i];
+
+            // check if it's a thought message and exclude (Stepped Thinking extension)
+            // TODO: This is deprecated in the thought extension, could be removed at some point?
+            if (m.is_system) {
+                continue;
+            }
+
+            if (!messages.includes(m.mes)) {
+                lastMessage = i+1;
+                break;
+            }
+        }
+    }
+
+    // if lastMessage does not exist - buffer is big enough for whole history, ignore short term memory
+    if (lastMessage) {
+        // remove n last messages until context is bellow token size
+        let originalTokenSize = count_tokens(messages);
+        let tokenSize = originalTokenSize;
+        let mesBuf = messages;
+        let ix = lastMessage;
+        let lastHistory = null;
+        let testTokenSize;
+        while (true) {
+            let mesBufPos = mesBuf.indexOf(context.chat[ix].mes)
+            if (mesBufPos >= 0) {
+                // trim everything until mesBufPos
+                mesBuf = mesBuf.substring(mesBufPos, mesBuf.length);
+                mesBuf = mesBuf.replace(context.chat[ix].mes, "")
+            }
+            testTokenSize = count_tokens(mesBuf);
+            if (tokenSize - testTokenSize > get_short_token_limit()) {
+                lastHistory = ix;
+                tokenSize = testTokenSize;
+                break;
+            }
+            ix = ix + 1;
+            if (ix >= context.chat.length) {
+                // bad settings, 100% short memory buffer?
+                return;
+            }
+        }
+
+        if (lastHistory) {
+            let history = "";
+            let indexes = []  // list of indexes of messages
+            for (let i=lastHistory; i>=0;i--) {
+                let message = context.chat[i];
+                if (!get_data(message, 'memory')) continue  // no memory
+                if (get_data(message, 'lagging')) continue  // lagging - not injected yet
+                indexes.push(i)
+
+                let check_indexes = [...indexes]
+                // reverse the indexes so they are in chronological order
+                check_indexes.reverse()
+
+                let text = concatenate_summaries(indexes);
+                let template = get_settings('short_template');
+
+                // replace memories macro
+                let shortHistory = context.substituteParamsExtended(template, {[generic_memories_macro]: text});
+                let shTokenSize = count_tokens(shortHistory);
+
+                if (shTokenSize + testTokenSize > originalTokenSize ) {
+                    break;
+                }
+
+                history = shortHistory;
+            }
+
+            messages_clipped = mesBuf;
+            short_history = history;
+        }
+    }
+
+    data.prompt = intro + short_history + preMessages + messages_clipped + postMessage;
+}
+
+
+
 // Summarization
 function refresh_memory() {
     let ctx = getContext();
     if (!chat_enabled()) { // if chat not enabled, remove the injections
         ctx.setExtensionPrompt(`${MODULE_NAME}_long`, "");
         ctx.setExtensionPrompt(`${MODULE_NAME}_short`, "");
+        ctx.setExtensionPrompt(`${MODULE_NAME}_rw_end`, "");
+        ctx.setExtensionPrompt(`${MODULE_NAME}_rw_start`, "");
         return;
     }
 
@@ -3985,7 +4093,7 @@ function refresh_memory() {
 
     // get the filled out templates
     let long_injection = get_long_memory();
-    let short_injection = get_short_memory();
+    let short_injection = !get_settings("short_term_rolling_window") ? get_short_memory() : SHORT_MEMORY_ROLLING_WINDOW_MARKER;
 
     let long_term_position = get_settings('long_term_position')
     let short_term_position = get_settings('short_term_position')
@@ -3999,6 +4107,11 @@ function refresh_memory() {
     // inject the memories into the templates, if they exist
     ctx.setExtensionPrompt(`${MODULE_NAME}_long`,  long_injection,  long_term_position, get_settings('long_term_depth'), get_settings('long_term_scan'), get_settings('long_term_role'));
     ctx.setExtensionPrompt(`${MODULE_NAME}_short`, short_injection, short_term_position, get_settings('short_term_depth'), get_settings('short_term_scan'), get_settings('short_term_role'));
+
+    if (get_settings("short_term_rolling_window")){
+        setExtensionPrompt(`${MODULE_NAME}_rw_start`, SHORT_MEMORY_ROLLING_WINDOW_STARTOFHISTORY_MARKER, extension_prompt_types.IN_CHAT, 10000);
+        setExtensionPrompt(`${MODULE_NAME}_rw_end`, SHORT_MEMORY_ROLLING_WINDOW_ENDOFHISTORY_MARKER, extension_prompt_types.IN_CHAT, 0);
+    }
 
     return `${long_injection}\n\n...\n\n${short_injection}`  // return the concatenated memory text
 }
@@ -4222,6 +4335,18 @@ async function on_chat_event(event=null, data=null) {
             last_lorebook_info = lorebook_info;
         } break;
 
+        case "prompt_ready": {
+            if (data.dry)
+                return;
+            if (!chat_enabled()) break;  // if chat is disabled, do nothing
+
+            if (get_settings("short_term_rolling_window")) {
+                update_prompt_with_rolling_short_memory(context, data.data);
+                return;
+            }
+            break;
+        }
+
         default:
             if (!chat_enabled()) break;  // if chat is disabled, do nothing
             debug(`Unknown event: "${event}", refreshing memory`)
@@ -4312,6 +4437,7 @@ function initialize_settings_listeners() {
     bind_setting('#short_term_depth', 'short_term_depth', 'number');
     bind_setting('#short_term_role', 'short_term_role');
     bind_setting('#short_term_scan', 'short_term_scan', 'boolean');
+    bind_setting('#short_term_rolling_window', 'short_term_rolling_window', 'boolean');
     bind_setting('#short_term_context_limit', 'short_term_context_limit', 'number')
     bind_setting('#short_term_context_type', 'short_term_context_type', 'text')
 
@@ -4909,6 +5035,7 @@ jQuery(async function () {
     eventSource.on(event_types.GROUP_UPDATED, set_character_enabled_button_states);
     eventSource.on(event_types.GENERATION_STARTED, (type, stuff, dry) => on_chat_event('before_message', {'type': type, 'dry': dry}));
     eventSource.on(event_types.WORLDINFO_SCAN_DONE, (type, stuff, dry) => on_chat_event('lorebook_generated', {'type': type, 'dry': dry}))
+    eventSource.on(event_types.GENERATE_AFTER_COMBINE_PROMPTS, (data, stuff, dry) => on_chat_event('prompt_ready', {'data': data, 'dry': dry}))
 
     // Update extension config on these events
     let update_events = [event_types.PRESET_CHANGED, event_types.CONNECTION_PROFILE_LOADED, event_types.CONNECTION_PROFILE_UPDATED]
