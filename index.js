@@ -639,6 +639,10 @@ function get_settings(key, copy=false) {
     }
 
 }
+function delete_settings(key, value) {
+    delete extension_settings[MODULE_NAME][key];
+    saveSettingsDebounced();
+}
 function set_chat_metadata(key, value, copy=false) {
     // Set a key and value in chat metadata (persists with branches)
     if (copy) {
@@ -1378,6 +1382,15 @@ function migrate_profile() {
         set_settings('connection_profile', data.id)
         save_profile()
         log("Connection profile name swapped with ID.")
+    }
+
+    // If an old summary separator is present in the config, use it to set the new summary injection format and delete it
+    let sep = get_settings('summary_injection_separator')
+    if (sep) {
+        log("Old separator setting found. Migrating to new format.")
+        set_settings("summary_injection_format", `${sep}{{summary}}`)
+        delete_settings("summary_injection_separator")
+        save_profile()
     }
 }
 
