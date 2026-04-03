@@ -27,8 +27,7 @@ import {
     main_api,
     online_status,
     chat_metadata,
-    messageFormatting,
-    getCharacterCardFields, setExtensionPrompt,
+    setExtensionPrompt,
 } from '../../../../script.js';
 import { getContext, extension_settings, saveMetadataDebounced} from '../../../extensions.js';
 import { formatInstructModeChat, formatInstructModePrompt } from '../../../instruct-mode.js';
