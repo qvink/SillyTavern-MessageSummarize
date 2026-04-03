@@ -1554,10 +1554,12 @@ async function display_text_modal(title, text="") {
     let popup = new ctx.Popup(html, ctx.POPUP_TYPE.TEXT, undefined, {okButton: 'Close', allowVerticalScrolling: true, wider: true});
     await popup.show()
 }
-async function get_user_setting_text_input(key, title, description="", size=20) {
+async function get_user_setting_text_input(key, title, description="", size=20, render_newlines=true) {
     // Display a modal with a text area input, populated with a given setting value
     // size is the number of rows in the text input
+    // render_newlines determines whether newlines are displayed literally (false) or rendered as new lines (true)
     let value = get_settings(key) ?? '';
+    if (!render_newlines) value = escape_string(value)
 
     title = `
 <h3>${title}</h3>
@@ -1568,7 +1570,9 @@ async function get_user_setting_text_input(key, title, description="", size=20) 
         text: 'Restore Default',
         appendAtEnd: true,
         action: () => { // fill the input with the default value
-            popup.mainInput.value = default_settings[key] ?? '';
+            let val = default_settings[key] ?? '';
+            if (!render_newlines) val = escape_string(val)
+            popup.mainInput.value = val
         }
     }
     let ctx = getContext();
@@ -1581,6 +1585,7 @@ async function get_user_setting_text_input(key, title, description="", size=20) 
 
     let input = await popup.show();
     if (input) {
+        input = unescape_string(input)  // ensure values like "\n" are not escaped from input
         set_settings(key, input);
         refresh_settings()
         refresh_memory()
@@ -4253,7 +4258,7 @@ function initialize_settings_listeners() {
     <li><b>{{summary}}</b> - the summary to be injected.</li>
     <li><b>{{timestamp}}</b> - the date and time of the message associated with the summary.</li>
 </ul>`
-        get_user_setting_text_input('summary_injection_format', 'Edit Individual Summary Format', description, 2)
+        get_user_setting_text_input('summary_injection_format', 'Edit Individual Summary Format', description, 2, false)
     })
 
 
