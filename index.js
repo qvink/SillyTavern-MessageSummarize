@@ -1,3 +1,4 @@
+/* eslint-disable */
 import {
     getStringHash,
     debounce,
@@ -94,6 +95,7 @@ const default_summary_macros = {  // default set of macros for the summary promp
     "message": {name: "message", default: true, enabled: true,  type: "special", instruct_template: false, apply_regex: true, description: "The message being summarized"},
     "words":   {name: "words",   default: true, enabled: true,  type: "custom",  instruct_template: false, apply_regex: false, command: "/qm-max-summary-tokens", description: "Max response tokens defined by the chosen completion preset"},
     "history": {name: "history", default: true, enabled: false, type: "preset",  instruct_template: true, apply_regex: true, start: 1, end: 6, bot_messages: true, user_messages: true, bot_summaries: false, user_summaries: false},
+    "lorebook": {name: "lorebook", default: false, enabled: false, type: "special",  instruct_template: false, apply_regex: true, description: "Lorebook used to generate current message"},
 }
 const default_settings = {
     // inclusion criteria
@@ -2613,7 +2615,7 @@ class SummaryPromptEditInterface {
         }
 
         // special case for the {{message}} macro
-        if (macro.name === "message") {
+        if (macro.name === "message" || macro.name === "lorebook") {
             $macro_type_div.remove()
             $range_div.remove()
             $script_div.remove()
@@ -2938,8 +2940,16 @@ class SummaryPromptEditInterface {
             return this.special_macro_message(index)
         }
 
+        if (name === "lorebook") {
+            let context = getContext();
+            let message = context.chat[index]
+            let lorebook = get_data(message, 'lorebook')
+            if (lorebook)
+                return [{ role: '',  content: lorebook}]
+        }
+
         if (macro.type === "preset") {  // range presets
-           return this.compute_range_macro(index, macro)
+            return this.compute_range_macro(index, macro)
         } else if (macro.type === "custom") {  // STScript
             let text = await this.evaluate_script(macro, index, "")
             if (text && macro.instruct_template) {
@@ -4061,6 +4071,7 @@ async function auto_summarize_chat(skip_initial_delay=true) {
 var last_message_swiped = null;  // if an index, that was the last message swiped
 var last_message = null; // if an index, that was the last message sent
 var just_opened = false;  // whether a chat has just been opened
+var last_lorebook_info = null // last lorebook info
 async function on_chat_event(event=null, data=null) {
     // When the chat is updated, check if the summarization should be triggered
     debug("Chat updated:", event, data)
@@ -4072,6 +4083,7 @@ async function on_chat_event(event=null, data=null) {
         case 'chat_changed':  // chat was changed
             last_message_swiped = null;
             last_message = null;
+            last_lorebook_info = null;
 
             // set timeout for a chat just being opened, blocking auto-summaries
             just_opened = true;
@@ -4112,6 +4124,7 @@ async function on_chat_event(event=null, data=null) {
             }
 
             index = context.chat.length - 1
+            last_lorebook_info = null;
             if (last_message_swiped === index) break;  // this is a swipe, skip
             debug("Summarizing chat before message")
             let promise = auto_summarize_chat(true);  // auto-summarize the chat
@@ -4158,6 +4171,8 @@ async function on_chat_event(event=null, data=null) {
                 refresh_memory()
             } else { // not a swipe or continue
                 last_message_swiped = null
+                let message = context.chat[index];
+                set_data(message, "lorebook", last_lorebook_info);
                 if (!get_settings('auto_summarize')) break;  // if auto-summarize is disabled, do nothing
                 if (get_settings("auto_summarize_on_send")) break;  // if auto_summarize_on_send is enabled, don't auto-summarize on character message
                 debug("New message detected, summarizing")
@@ -4195,6 +4210,17 @@ async function on_chat_event(event=null, data=null) {
             // make sure the chat is scrolled to the bottom because the memory will change
             scrollChatToBottom();
             break;
+
+        case "lorebook_generated": {
+            let lorebook_info = "";
+            let entries = data?.type?.activated?.entries
+            if (entries) {
+                entries.forEach(entry => {
+                    lorebook_info += entry.content
+                })
+            }
+            last_lorebook_info = lorebook_info;
+        } break;
 
         default:
             if (!chat_enabled()) break;  // if chat is disabled, do nothing
@@ -4882,6 +4908,7 @@ jQuery(async function () {
     eventSource.on('groupSelected', set_character_enabled_button_states);
     eventSource.on(event_types.GROUP_UPDATED, set_character_enabled_button_states);
     eventSource.on(event_types.GENERATION_STARTED, (type, stuff, dry) => on_chat_event('before_message', {'type': type, 'dry': dry}));
+    eventSource.on(event_types.WORLDINFO_SCAN_DONE, (type, stuff, dry) => on_chat_event('lorebook_generated', {'type': type, 'dry': dry}))
 
     // Update extension config on these events
     let update_events = [event_types.PRESET_CHANGED, event_types.CONNECTION_PROFILE_LOADED, event_types.CONNECTION_PROFILE_UPDATED]
