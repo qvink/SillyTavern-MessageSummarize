@@ -1,7 +1,7 @@
 # Changelog
 
 #### v1.3.14
-**ST Version Requirement**: You must be on ST v1.14.0 (relies on [this PR](https://github.com/SillyTavern/SillyTavern/pull/4841))\
+**ST Version Requirement**: You must be on ST >= v1.14.0 (relies on [this PR](https://github.com/SillyTavern/SillyTavern/pull/4841))\
 **IMPORTANT**: Your summary `Completion Preset` is now entirely determined by the `Connection Profile`. If you previously had a `Completion Preset` configured for summaries, you will need to make sure that your `Connection Profile` specifies it instead.
 - **New Feature**: `Connection Profiles` are now used for summaries **without switching** back and forth. 
 - **New Feature**: Parallel API requests now supported, configured by the `Parallel Summaries` setting. Auto-summary will block chat generation by default, but this can be disabled via the `Block Generation` toggle.
@@ -10,6 +10,7 @@
 - **New Feature**: The slash command `/qm-summarize` now accepts a range of indexes and an optional toggle for disabling the progress bar.
 - **Changed**: Some config settings had their name adjusted (e.g. `Start Injecting After` -> `Injection Threshold`, `Remove Messages After Threshold` -> `Remove Messages`, `Do Not Inject` -> `Macro Only`, `Static Memory Mode` -> `Always Separate`, `Message Length Threshold` -> `Minimum Length`). These changes have not affected their functionality.
 - **Changed**: Some radio configs have been changed to dropdowns to save space.
+- **Changed**: Adjusted the `Edit Memory` filter UI to be a bit more compact.
 - **Removed**: You can no longer configure a separate `Completion Preset` for summaries (it is instead determined by the `Connection Profile`).
 - **Fixed**: Fixed case where short-term messages would be included in the short-term context size calculation even if they were not injected due to injection delay.
 - **Fixed**: Properly escapes special characters in summary prefill.
