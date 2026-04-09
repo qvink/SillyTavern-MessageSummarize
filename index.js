@@ -134,7 +134,7 @@ const default_settings = {
     injection_threshold_update_trigger_summaries: 0,  // update threshold when this many new summaries are ready
     injection_threshold_update_trigger_context: 0,  // update threshold when the last prompt reched this percent of max context
 
-    rolling_window: false, // whether we roll memories - in which case lot of other options below are ignored
+    dynamic_memory: false, // whether we have dynamic memories - in which case a lot of other options below are ignored
 
     long_template: default_long_template,
     long_term_context_limit: 10,  // context size to use as long-term memory limit
@@ -3957,35 +3957,58 @@ globalThis.memory_intercept_messages = function (chat, _contextSize, _abort, typ
     }
 };
 
+class DynamicMemory {
 
-const SHORT_MEMORY_ROLLING_WINDOW_MARKER = "@@SHORT_MEMORY_ROLLING_WINDOW_MARKER@@";
-const LONG_MEMORY_ROLLING_WINDOW_MARKER = "@@LONG_MEMORY_ROLLING_WINDOW_MARKER@@";
-const SHORT_MEMORY_ROLLING_WINDOW_STARTOFHISTORY_MARKER = "@@SHORT_MEMORY_ROLLING_WINDOW_STARTOFHISTORY_MARKER@@";
-const SHORT_MEMORY_ROLLING_WINDOW_ENDOFHISTORY_MARKER = "@@SHORT_MEMORY_ROLLING_WINDOW_ENDOFHISTORY_MARKER@@";
-
-class RollingWindowProcessor {
+    static DYNAMIC_SHORT_MEMORY_MARKER = "@@DYNAMIC_SHORT_MEMORY_MARKER@@";
+    static DYNAMIC_LONG_MEMORY_MARKER = "@@DYNAMIC_LONG_MEMORY_MARKER@@";
+    static DYNAMIC_MEMORY_STARTOFHISTORY_MARKER = "@@DYNAMIC_MEMORY_STARTOFHISTORY_MARKER@@";
+    static DYNAMIC_MEMORY_ENDOFHISTORY_MARKER = "@@DYNAMIC_MEMORY_ENDOFHISTORY_MARKER@@";
 
     ctx = null;
     unmodified = null;
 
+    // block of prompt before actual messages
     pre = null;
+    // block of prompt after messages (usually just user prompt)
     post = null;
 
+    // original prompt
     messages = null;
+    // and size of it
     messages_tokens = null;
+
+    // id of last removed message from prompt
     last_message = null;
 
+    // working messages - we remove from this
     message_buffer = null;
+    // and size of tokens in message_buffer
     message_buffer_tokens = null;
-    short_history_text = "";
-    short_history_tokens = 0;
-    short_history_token_space = 0;
-    short_history = [];
-    long_history_text = "";
-    long_history_tokens = 0;
-    long_history_token_space = 0;
-    long_history = [];
 
+    // short term memories generated
+    short = {
+        // generated history text with all macros
+        text : "",
+        // tokens in text
+        tokens : 0,
+        // remaining tokens left
+        token_space : 0,
+        // summaries used to generate text
+        history : []
+    };
+    // long term memories generated
+    long = {
+        // generated history text with all macros
+        text : "",
+        // tokens in text
+        tokens : 0,
+        // remaining tokens left
+        token_space : 0,
+        // summaries used to generate text
+        history : []
+    };
+
+    // flag if we finish generating succefully
     generated = false;
 
     constructor(context, prompt) {
@@ -3994,15 +4017,16 @@ class RollingWindowProcessor {
     }
 
     process() {
-        let split = this.unmodified.split(SHORT_MEMORY_ROLLING_WINDOW_STARTOFHISTORY_MARKER)
+        // split prompt according to the markers
+        let split = this.unmodified.split(DynamicMemory.DYNAMIC_MEMORY_STARTOFHISTORY_MARKER)
         this.pre = split[0];
         let rest = split[1];
-        split = rest.split(SHORT_MEMORY_ROLLING_WINDOW_ENDOFHISTORY_MARKER)
+        split = rest.split(DynamicMemory.DYNAMIC_MEMORY_ENDOFHISTORY_MARKER)
         this.messages = split[0];
         this.messages_tokens = count_tokens(this.messages);
         this.post = split[1];
         this.message_buffer = this.messages;
-        this.message_buffer_tokens = count_tokens(this.messages);
+        this.message_buffer_tokens = this.messages_tokens;
 
         if (!this._find_last_message()) {
             return;
@@ -4013,24 +4037,32 @@ class RollingWindowProcessor {
             return;
         }
 
-        // initialize short history to just message above
-        this.short_history.push(this.last_message - 1);
+        // initialize short history to first message that was not included in the prompt
+        this.short.history.push(this.last_message - 1);
 
         if (this._process_long_memories()) {
             this.generated = true;
         }
     }
 
+    /**
+     * filters the long/short markers with actual generated long_history/short_history text
+     * @param long_history
+     * @param short_history
+     * @returns {*}
+     */
     format_output(long_history, short_history) {
-        let filtered_pre_long_history = this.pre.replace(LONG_MEMORY_ROLLING_WINDOW_MARKER, long_history);
-        let filtered_pre_history = filtered_pre_long_history.replace(SHORT_MEMORY_ROLLING_WINDOW_MARKER, short_history);
-        let filtered_post_long_history = this.post.replace(LONG_MEMORY_ROLLING_WINDOW_MARKER, long_history);
-        let filtered_post_history = filtered_post_long_history.replace(SHORT_MEMORY_ROLLING_WINDOW_MARKER, short_history);
+        let filtered_pre_long_history = this.pre.replace(DynamicMemory.DYNAMIC_LONG_MEMORY_MARKER, long_history);
+        let filtered_pre_history = filtered_pre_long_history.replace(DynamicMemory.DYNAMIC_SHORT_MEMORY_MARKER, short_history);
+        let filtered_post_long_history = this.post.replace(DynamicMemory.DYNAMIC_LONG_MEMORY_MARKER, long_history);
+        let filtered_post_history = filtered_post_long_history.replace(DynamicMemory.DYNAMIC_SHORT_MEMORY_MARKER, short_history);
 
         return filtered_pre_history + this.message_buffer + filtered_post_history;
     }
 
-
+    /**
+     *  finds first message from chat that is included in the prompt (topmost message)
+     *  */
     _find_last_message() {
         if (this.ctx.chat.length > 0) {
             for (let i = this.ctx.chat.length - 1; i--; i>=0) {
@@ -4053,114 +4085,162 @@ class RollingWindowProcessor {
         return false;
     }
 
+    /**
+     * Removes the top message from the message buffer including all text that is before it.
+     * @returns {number} - amount of tokens we freed from the prompt
+     * @private
+     */
     _shift_messages() {
         while (this.last_message < this.ctx.chat.length) {
             let message = this.ctx.chat[this.last_message];
             if (message.is_system) {
-                // ignore system messages
+                // ignore system messages - go for another message - system messages are not in prompt
                 this.last_message = this.last_message + 1;
                 continue;
             }
             let mesBufPos = this.message_buffer.indexOf(message.mes)
             if (mesBufPos >= 0) {
-                // trim everything until mesBufPos
-                const pre = this.message_buffer.substring(0, mesBufPos);
+                // trim everything until index of the message
+                const ctokens = this.message_buffer_tokens;
                 this.message_buffer = this.message_buffer.substring(mesBufPos, this.message_buffer.length);
+
                 this.message_buffer = this.message_buffer.replace(message.mes, "")
+                // we lowered the amount of tokens actual messages now occupy
                 this.message_buffer_tokens = count_tokens(this.message_buffer);
+                // shift last included message to reflect the change
                 this.last_message = this.last_message + 1;
 
-                return count_tokens(pre + message.mes);
+                return ctokens - this.message_buffer_tokens;
             }
+            // message not in the context, go for more messages
             this.last_message = this.last_message + 1;
         }
+        // we failed to remove anything
         return -1;
     }
 
+    /**
+     * Generate long term memories for the prompt
+     * @returns {boolean} if we generated them successfully or not
+     * @private
+     */
     _process_long_memories() {
+        // we need to process short term memories first
         if (!this._process_short_memories()) {
             return false;
         }
 
         const long_history_token_limit = get_long_token_limit()
         do {
-            // remove one message
+            // this loop is repeated every time we need to increase the long term memory available tokens
+            // so first part deals with freeing space by removing top message, then converting that message into short term memory
+            // and then finding long term memory to insert
+            // after that we fill all available token space with more long term memories
+            // and if we are under the token limit we loop
+
+            // remove top message from prompt
             const last_message = this.last_message;
             const free_space = this._shift_messages();
-            if (free_space === 0) {
-                // unable to shift, return
+            if (free_space <= 0) {
+                // unable to free space, return
                 return false;
             }
 
-            // we now have free_space tokens space
-            this.long_history_token_space += free_space;
+            // removed message means available tokens for memories
+            this.long.token_space += free_space;
 
-            // insert any messages (should be only 1 or skipped) into short_history buffer
+            // we removed 1 or less messages in previous step, that message needs to be
+            // inserted into short memory now unless it was system or without memory
             for (let i=this.last_message-1; i>=last_message; i--) {
                 let message = this.ctx.chat[i];
                 if (!get_data(message, 'memory')) continue; // no memory
                 if (get_data(message, 'lagging')) continue; // lagging - not injected yet
                 if (message.is_system) continue;
-                this.short_history.unshift(i);
+                this.short.history.unshift(i);
             }
+            // since we added a memory we need to regenerate short term since now the messages might not fit anymore
             this._generate_short_terms_to_fill_space();
-            if (this.short_history_tokens > this.short_history_token_space)
-                this._trim_short_history();
+            // trim short term memories if we are above the token limit
+            if (this.short.tokens > this.short.token_space)
+                this._trim_history(this.short, 'short_template');
 
-            let first_long_memory = this._find_first_long_term_memory_above(this.short_history[this.short_history.length - 1]);
+            // this is first long term memory above last included short term memory
+            let first_long_memory = this._find_first_long_term_memory_above(this.short.history[this.short.history.length - 1]);
 
-            if (this.long_history.length === 0) {
+            if (this.long.history.length === 0) {
+                // first long term memory
+
                 if (first_long_memory === -1) {
-                    // nothing in long term
+                    // we didn't find any long term memory in all memories above, we are done with nothing in long term
                     return true;
                 }
-                this.long_history.push(first_long_memory);
-                this._generate_long_history();
-                if (this.long_history_tokens > this.long_history_token_space)
-                    this._trim_long_history();
+
+                // generate long term memory with just 1 memory to start + trim
+                this.long.history.push(first_long_memory);
+                this._generate_history(this.long, 'long_template');
+                if (this.long.tokens > this.long.token_space)
+                    this._trim_history(this.long, 'long_template');
             } else {
                 if (first_long_memory !== -1) {
-                    const cstart_long_mes = this.long_history[0]-1;
+                    // find another long term memory above the top long term memory already included
+                    // and insert it into long history
+                    const cstart_long_mes = this.long.history[0]-1;
                     for (let i=cstart_long_mes; i>=first_long_memory; i--) {
                         let message = this.ctx.chat[i];
                         if (!get_data(message, 'memory')) continue; // no memory
                         if (get_data(message, 'lagging')) continue; // lagging - not injected yet
                         if (message.is_system) continue;
                         if (get_data(message, 'include') !== "long") continue
-                        this.long_history.unshift(i);
+                        this.long.history.unshift(i);
                     }
                 }
             }
-            if (this.long_history.length > 0) {
+
+            if (this.long.history.length > 0) {
+                // we have at least 1 long term memory so we fill the space remaining with more long term memories until we hit
+                // the limit, or we are done (no more memories)
                 const status = this._generate_long_terms_to_fill_space();
 
                 if (status === "DONE") {
+                    // no more long term memories left to select, we are done
                     return true;
                 }
                 if (status === "FAIL") {
                     return false;
                 }
             }
-        } while (this.long_history_tokens < long_history_token_limit);
 
-        // we overfilled, trim
-        return this._trim_long_history();
+            // repeat until we fill the token space for long term
+        } while (this.long.tokens < long_history_token_limit);
+
+        // since we end here, we are above long token limit, we have to trim down.
+        return this._trim_history(this.long, 'long_template');
     }
 
+    /**
+     * Fills long term available space with long term memories
+     * @returns {string} status of the operation DONE means we are finished because we have no more
+     * long term memories left
+     *
+     * @private
+     */
     _generate_long_terms_to_fill_space() {
-        const current_history = [...this.long_history];
+        const current_history = [...this.long.history];
         let last_history = current_history[current_history.length - 1];
         if (last_history === 0) {
-            // we have everything
+            // top summary is start of the chat - we have everything
             return "DONE";
         }
 
+        // check all messages above last_history
         for (let i = last_history - 1; i >= 0; i--) {
             let message = this.ctx.chat[i];
             if (!get_data(message, 'memory')) continue; // no memory
             if (get_data(message, 'lagging')) continue; // lagging - not injected yet
             if (message.is_system) continue;
-            if (get_data(message, 'include') !== "long") continue
+            if (get_data(message, 'include') !== "long") continue;
+
+            // this message has long term summary, include it
 
             current_history.push(i);
             let check_indexes = [...current_history]
@@ -4174,48 +4254,61 @@ class RollingWindowProcessor {
             let long_history = this.ctx.substituteParamsExtended(template, {[generic_memories_macro]: text});
             let long_history_tokens = count_tokens(long_history);
 
-            if (long_history_tokens > this.long_history_token_space) {
+            // check if long term summary we generated is above what we have available for long memories so far
+            if (long_history_tokens > this.long.token_space) {
                 // we overfilled and are done with previous version
                 if (current_history.length === 1) {
-                    // cant fit, leave unchanged and retry with bigger buffer
+                    // long term summary we wanted to include is first one and it does not fit into currently available long term summary token allocation
+                    // return "CONTINUE" so code above it loops and frees more space
                     return "CONTINUE";
                 }
-                this.long_history = current_history
-                this._generate_long_history();
 
+                this.long.history = current_history
+                this._generate_history(this.long, 'long_template');
+
+                // more messages available so continue freeing up token space (unless we are above the limit of course)
                 return "CONTINUE";
             }
         }
 
-        this.long_history = current_history
-        this._generate_long_history();
+        // we went through whole history, nothing else is there, just trim in case we overflowed with last long summary
+        this.long.history = current_history
+        this._generate_history(this.long, 'long_template');
         return "DONE";
     }
 
+
+
+    /**
+     * Generate short term memories for the prompt
+     * @returns {boolean} if we generated them successfully or not
+     * @private
+     */
     _process_short_memories() {
         const short_history_token_limit = get_short_token_limit();
 
         do {
             const last_message = this.last_message;
 
-            // remove one message
+            // remove top message from prompt
             const free_space = this._shift_messages();
-            if (free_space === 0) {
-                // unable to shift, return
+            if (free_space <= 0) {
+                // unable to free space, we failed
                 return false;
             }
 
-            // insert any messages (should be only 1 or skipped) into short_history buffer
+            // since we removed 1 message, we need to put this message's summary into the short buffer
             for (let i=this.last_message-1; i>=last_message; i--) {
                 let message = this.ctx.chat[i];
                 if (message.is_system) continue;
                 if (!get_data(message, 'memory')) continue; // no memory
                 if (get_data(message, 'lagging')) continue; // lagging - not injected yet
-                this.short_history.unshift(i);
+                this.short.history.unshift(i);
             }
 
-            // we now have free_space tokens space
-            this.short_history_token_space += free_space;
+            // we have tokens available for short term memories
+            this.short.token_space += free_space;
+            // fill that token space with more short term memories
             const status = this._generate_short_terms_to_fill_space();
 
             if (status === "DONE") {
@@ -4224,14 +4317,23 @@ class RollingWindowProcessor {
             if (status === "FAIL") {
                 return false;
             }
-        } while (this.short_history_tokens < short_history_token_limit);
+
+            // repeat until we have full short term buffer
+        } while (this.short.tokens < short_history_token_limit);
 
         // we overfilled, trim
-        return this._trim_short_history();
+        return this._trim_history(this.short);
     }
 
+    /**
+     * Fills short term available space with short term memories
+     * @returns {string} status of the operation DONE means we are finished because we have no more
+     * long short memories left
+     *
+     * @private
+     */
     _generate_short_terms_to_fill_space() {
-        const current_history = [...this.short_history];
+        const current_history = [...this.short.history];
         let last_history = current_history[current_history.length - 1];
         if (last_history === 0) {
             // we have everything
@@ -4256,89 +4358,77 @@ class RollingWindowProcessor {
             let short_history = this.ctx.substituteParamsExtended(template, {[generic_memories_macro]: text});
             let short_history_tokens = count_tokens(short_history);
 
-            if (short_history_tokens > this.short_history_token_space) {
+            if (short_history_tokens > this.short.token_space) {
                 // we overfilled and are done with previous version
                 if (current_history.length === 1) {
                     // cant fit, leave unchanged and retry with bigger buffer
                     return "CONTINUE";
                 }
 
-                this.short_history = current_history
-                this._generate_short_history();
+                this.short.history = current_history
+                this._generate_history(this.short, 'short_template');
 
                 return "CONTINUE";
             }
         }
 
-        this.short_history = current_history
-        this._generate_short_history();
+        this.short.history = current_history
+        this._generate_history(this.short, 'short_template');
         return "DONE";
     }
 
-    _trim_short_history() {
+    /**
+     * Trims memory until we reach under the limit
+     * @param memory - this.long or this.short
+     * @param template - 'long_template' or 'short_template'
+     * @returns {boolean} true/false if we completely cleared the buffer (should not happen)
+     * @private
+     */
+    _trim_history(memory, template) {
         do {
-            if (this.short_history.length === 0) {
-                this.short_history_text = "";
-                this.short_history_tokens = 0;
-                return true;
+            if (memory.history.length === 0) {
+                memory.text = "";
+                memory.tokens = 0;
+                return false;
             }
 
-            this.short_history.pop();
-            this._generate_short_history();
-        } while (this.short_history_tokens > this.short_history_token_space);
+            memory.history.pop();
+            this._generate_history(memory, template);
+        } while (memory.tokens > memory.token_space);
 
         return true;
     }
 
-    _generate_short_history() {
-        if (this.short_history.length === 0) {
-            this.short_history_text = "";
-            this.short_history_tokens = 0;
+    /**
+     * Take teh memory buffer and transform it into text
+     *
+     * @param memory - this.long or this.short
+     * @param template_type - 'long_template' or 'short_template'
+     * @private
+     */
+    _generate_history(memory, template_type) {
+        if (memory.history.length === 0) {
+            memory.text = "";
+            memory.tokens = 0;
         } else {
-            let process_indexes = [...this.short_history]
+            let process_indexes = [...memory.history]
             // reverse the indexes so they are in chronological order
             process_indexes.reverse();
 
             let text = concatenate_summaries(process_indexes);
-            let template = get_settings('short_template');
+            let template = get_settings(template_type);
             // replace memories macro
-            this.short_history_text = this.ctx.substituteParamsExtended(template, {[generic_memories_macro]: text});
-            this.short_history_tokens = count_tokens(this.short_history_text);
+            memory.text = this.ctx.substituteParamsExtended(template, {[generic_memories_macro]: text});
+            memory.tokens = count_tokens(memory.text);
         }
     }
 
-    _trim_long_history() {
-        do {
-            if (this.long_history.length === 0) {
-                this.long_history_text = "";
-                this.long_history_tokens = 0;
-                return true;
-            }
-
-            this.long_history.pop();
-            this._generate_long_history();
-        } while (this.long_history_tokens > this.long_history_token_space);
-
-        return true;
-    }
-
-    _generate_long_history() {
-        if (this.long_history.length === 0) {
-            this.long_history_text = "";
-            this.long_history_tokens = 0;
-        } else {
-            let process_indexes = [...this.long_history]
-            // reverse the indexes so they are in chronological order
-            process_indexes.reverse();
-
-            let text = concatenate_summaries(process_indexes);
-            let template = get_settings('long_template');
-            // replace memories macro
-            this.long_history_text = this.ctx.substituteParamsExtended(template, {[generic_memories_macro]: text});
-            this.long_history_tokens = count_tokens(this.long_history_text);
-        }
-    }
-
+    /**
+     * Returns first long term summary below the message id
+     * @param from_message search from below this message id
+     * @returns {number} messageId or -1 if not found
+     * @private
+     */
     _find_first_long_term_memory_above(from_message) {
         if (from_message === 0)
             return -1;
@@ -4357,11 +4447,11 @@ class RollingWindowProcessor {
 
 }
 
-function update_prompt_with_rolling_memory(context, data) {
-    const processor = new RollingWindowProcessor(context, data.prompt);
+function update_prompt_with_dynamic_memory(context, data) {
+    const processor = new DynamicMemory(context, data.prompt);
     processor.process();
     if (processor.generated) {
-        data.prompt = processor.format_output(processor.long_history_text, processor.short_history_text);
+        data.prompt = processor.format_output(processor.long.text, processor.short.text);
     } else {
         data.prompt = processor.format_output("", "");
     }
@@ -4384,8 +4474,8 @@ function refresh_memory() {
     update_message_inclusion_flags()  // update the inclusion flags for all messages
 
     // get the filled out templates
-    let long_injection = !get_settings("rolling_window") ? get_long_memory() : LONG_MEMORY_ROLLING_WINDOW_MARKER;
-    let short_injection = !get_settings("rolling_window") ? get_short_memory() : SHORT_MEMORY_ROLLING_WINDOW_MARKER;
+    let long_injection = !get_settings("dynamic_memory") ? get_long_memory() : DynamicMemory.DYNAMIC_LONG_MEMORY_MARKER;
+    let short_injection = !get_settings("dynamic_memory") ? get_short_memory() : DynamicMemory.DYNAMIC_SHORT_MEMORY_MARKER;
 
     let long_term_position = get_settings('long_term_position')
     let short_term_position = get_settings('short_term_position')
@@ -4400,9 +4490,9 @@ function refresh_memory() {
     ctx.setExtensionPrompt(`${MODULE_NAME}_long`,  long_injection,  long_term_position, get_settings('long_term_depth'), get_settings('long_term_scan'), get_settings('long_term_role'));
     ctx.setExtensionPrompt(`${MODULE_NAME}_short`, short_injection, short_term_position, get_settings('short_term_depth'), get_settings('short_term_scan'), get_settings('short_term_role'));
 
-    if (get_settings("rolling_window")){
-        ctx.setExtensionPrompt(`${MODULE_NAME}_rw_start`, SHORT_MEMORY_ROLLING_WINDOW_STARTOFHISTORY_MARKER, extension_prompt_types.IN_CHAT, 10000);
-        ctx.setExtensionPrompt(`${MODULE_NAME}_rw_end`, SHORT_MEMORY_ROLLING_WINDOW_ENDOFHISTORY_MARKER, extension_prompt_types.IN_CHAT, 0);
+    if (get_settings("dynamic_memory")){
+        ctx.setExtensionPrompt(`${MODULE_NAME}_rw_start`, DynamicMemory.DYNAMIC_MEMORY_STARTOFHISTORY_MARKER, extension_prompt_types.IN_CHAT, 10000);
+        ctx.setExtensionPrompt(`${MODULE_NAME}_rw_end`, DynamicMemory.DYNAMIC_MEMORY_ENDOFHISTORY_MARKER, extension_prompt_types.IN_CHAT, 0);
     }
 
     return `${long_injection}\n\n...\n\n${short_injection}`  // return the concatenated memory text
@@ -4616,8 +4706,8 @@ async function on_chat_event(event=null, data=null) {
                 return;
             if (!chat_enabled()) break;  // if chat is disabled, do nothing
 
-            if (get_settings("rolling_window")) {
-                update_prompt_with_rolling_memory(context, data.data);
+            if (get_settings("dynamic_memory")) {
+                update_prompt_with_dynamic_memory(context, data.data);
                 return;
             }
             break;
@@ -4708,7 +4798,7 @@ function initialize_settings_listeners() {
     bind_setting('#injection_threshold_update_trigger_summaries', 'injection_threshold_update_trigger_summaries', 'number')
     bind_setting('#injection_threshold_update_trigger_context', 'injection_threshold_update_trigger_context', 'number')
     bind_setting('#keep_last_user_message', 'keep_last_user_message', 'boolean');
-    bind_setting('#rolling_window', 'rolling_window', 'boolean');
+    bind_setting('#dynamic_memory', 'dynamic_memory', 'boolean');
 
     bind_setting('#short_term_position', 'short_term_position', 'number');
     bind_setting('#short_term_depth', 'short_term_depth', 'number');
