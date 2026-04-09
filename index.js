@@ -26,8 +26,7 @@ import {
     CONNECT_API_MAP,
     main_api,
     online_status,
-    chat_metadata,
-    findItemizedPromptSet,
+    chat_metadata
 } from '../../../../script.js';
 import { getContext, extension_settings, saveMetadataDebounced} from '../../../extensions.js';
 import { formatInstructModeChat, formatInstructModePrompt } from '../../../instruct-mode.js';
@@ -201,18 +200,21 @@ function count_tokens(text, padding = 0) {
     let ctx = getContext();
     return ctx.getTokenCount(text, padding);
 }
+function get_message_prompts(index) {
+    // Return an object containing prompt information for a given message index
+    // We can do this by iterating through the itemizedPrompts array and trying to match the message ID
+    for (let i = 0; i < itemizedPrompts.length; i++) {
+        let itemized_prompt = itemizedPrompts[i]
+        if (itemized_prompt.mesId === index) {
+            return itemized_prompt  // found one with a matching ID
+        }
+    }
+}
 function get_last_prompt_size() {
     // return the size in tokens of the last message's prompt
     let last_index = getContext().chat.length - 1
-
-    let raw_prompt = undefined;
-    for (let i = 0; i < itemizedPrompts.length; i++) {
-        let itemized_prompt = itemizedPrompts[i]
-        if (itemized_prompt.mesId === last_index) {
-            raw_prompt = itemized_prompt.rawPrompt
-            break;
-        }
-    }
+    let prompts = get_message_prompts(last_index)
+    let raw_prompt = prompts.rawPrompt
     if (raw_prompt === undefined) {
         debug('Could not find raw prompt for message:', last_index)
         return 0
@@ -4615,9 +4617,8 @@ function initialize_slash_commands() {
             let chat = getContext().chat
             if (index === "") index = chat.length-1
             index = Number(index)
-            let itemizedPromptId = findItemizedPromptSet(itemizedPrompts, index);
-            let world_info_string = itemizedPrompts[itemizedPromptId]?.worldInfoString ?? ""
-            return world_info_string
+            let prompts = get_message_prompts(index)
+            return prompts?.worldInfoString ?? ""
         },
         helpString: 'Return the world info used when generating a given message. If no index given, assumes the most recent message.',
         unnamedArgumentList: [
