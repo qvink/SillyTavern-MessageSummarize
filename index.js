@@ -26,7 +26,8 @@ import {
     CONNECT_API_MAP,
     main_api,
     online_status,
-    chat_metadata, findItemizedPromptSet,
+    chat_metadata,
+    findItemizedPromptSet,
 } from '../../../../script.js';
 import { getContext, extension_settings, saveMetadataDebounced} from '../../../extensions.js';
 import { formatInstructModeChat, formatInstructModePrompt } from '../../../instruct-mode.js';
@@ -92,10 +93,10 @@ Following is the message to summarize:
 const default_long_template = `[Following is a list of events that occurred in the past]:\n{{${generic_memories_macro}}}\n`
 const default_short_template = `[Following is a list of recent events]:\n{{${generic_memories_macro}}}\n`
 const default_summary_macros = {  // default set of macros for the summary prompt.
+    "lorebook": {name: "lorebook", default: true, enabled: false, type: "custom",  instruct_template: false, apply_regex: true, command: "/qm-get-message-world-info {{id}}", description: "World info used to generate the message"},
     "message": {name: "message", default: true, enabled: true,  type: "special", instruct_template: false, apply_regex: true, description: "The message being summarized"},
     "words":   {name: "words",   default: true, enabled: true,  type: "custom",  instruct_template: false, apply_regex: false, command: "/qm-max-summary-tokens", description: "Max response tokens defined by the chosen completion preset"},
     "history": {name: "history", default: true, enabled: false, type: "preset",  instruct_template: true, apply_regex: true, start: 1, end: 6, bot_messages: true, user_messages: true, bot_summaries: false, user_summaries: false},
-    "lorebook": {name: "lorebook", default: false, enabled: false, type: "special",  instruct_template: false, apply_regex: true, description: "Lorebook used to generate current message"},
 }
 const default_settings = {
     // inclusion criteria
@@ -2615,7 +2616,7 @@ class SummaryPromptEditInterface {
         }
 
         // special case for the {{message}} macro
-        if (macro.name === "message" || macro.name === "lorebook") {
+        if (macro.name === "message") {
             $macro_type_div.remove()
             $range_div.remove()
             $script_div.remove()
@@ -2938,13 +2939,6 @@ class SummaryPromptEditInterface {
         // special macro?
         if (name === "message") {
             return this.special_macro_message(index)
-        }
-
-        if (name === "lorebook") {
-            let context = getContext();
-            let itemizedPromptId = findItemizedPromptSet(itemizedPrompts, index);
-            if (itemizedPrompts[itemizedPromptId] && itemizedPrompts[itemizedPromptId].worldInfoString)
-                return [{ role: '',  content: itemizedPrompts[itemizedPromptId].worldInfoString}]
         }
 
         if (macro.type === "preset") {  // range presets
@@ -4610,6 +4604,27 @@ function initialize_slash_commands() {
                 description: 'Index of the message or range of messages',
                 isRequired: false,
                 typeList: [ARGUMENT_TYPE.NUMBER, ARGUMENT_TYPE.RANGE]
+            }),
+        ],
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'qm-get-message-world-info',
+        aliases: ['qvink-memory-get-message-world-info'],
+        callback: async (args, index) => {
+            let chat = getContext().chat
+            if (index === "") index = chat.length-1
+            index = Number(index)
+            let itemizedPromptId = findItemizedPromptSet(itemizedPrompts, index);
+            let world_info_string = itemizedPrompts[itemizedPromptId]?.worldInfoString ?? ""
+            return world_info_string
+        },
+        helpString: 'Return the world info used when generating a given message. If no index given, assumes the most recent message.',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'Index of the message',
+                isRequired: false,
+                typeList: [ARGUMENT_TYPE.NUMBER]
             }),
         ],
     }));
