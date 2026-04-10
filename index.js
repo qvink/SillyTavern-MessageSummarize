@@ -3982,8 +3982,8 @@ function refresh_memory() {
 
     // if using text completion, we need to wrap it in a system prompt
     if (main_api !== 'openai') {
-        if (long_term_position !== extension_prompt_types.IN_CHAT && long_injection.length) long_injection = formatInstructModeChat("", long_injection, false, true)
-        if (short_term_position !== extension_prompt_types.IN_CHAT && short_injection.length) short_injection = formatInstructModeChat("", short_injection, false, true)
+        if (long_term_position !== extension_prompt_types.IN_CHAT && long_injection.length && power_user.instruct.enabled) long_injection = formatInstructModeChat("", long_injection, false, true)
+        if (short_term_position !== extension_prompt_types.IN_CHAT && short_injection.length && power_user.instruct.enabled) short_injection = formatInstructModeChat("", short_injection, false, true)
     }
 
     // inject the memories into the templates, if they exist
