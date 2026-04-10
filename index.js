@@ -29,7 +29,7 @@ import {
     chat_metadata
 } from '../../../../script.js';
 import { getContext, extension_settings, saveMetadataDebounced} from '../../../extensions.js';
-import { formatInstructModeChat, formatInstructModePrompt } from '../../../instruct-mode.js';
+import { formatInstructModePrompt } from '../../../instruct-mode.js';
 import { selected_group, openGroupId } from '../../../group-chats.js';
 import { loadMovingUIState, power_user } from '../../../power-user.js';
 import { dragElement } from '../../../RossAscends-mods.js';
@@ -3984,12 +3984,6 @@ function refresh_memory() {
 
     let long_term_position = get_settings('long_term_position')
     let short_term_position = get_settings('short_term_position')
-
-    // if using text completion, we need to wrap it in a system prompt
-    if (main_api !== 'openai') {
-        if (long_term_position !== extension_prompt_types.IN_CHAT && long_injection.length && power_user.instruct.enabled) long_injection = formatInstructModeChat("", long_injection, false, true)
-        if (short_term_position !== extension_prompt_types.IN_CHAT && short_injection.length && power_user.instruct.enabled) short_injection = formatInstructModeChat("", short_injection, false, true)
-    }
 
     // inject the memories into the templates, if they exist
     ctx.setExtensionPrompt(`${MODULE_NAME}_long`,  long_injection,  long_term_position, get_settings('long_term_depth'), get_settings('long_term_scan'), get_settings('long_term_role'));
