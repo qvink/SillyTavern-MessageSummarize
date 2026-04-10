@@ -1,3 +1,4 @@
+/* eslint-disable */
 import {
     getStringHash,
     debounce,
@@ -25,7 +26,7 @@ import {
     CONNECT_API_MAP,
     main_api,
     online_status,
-    chat_metadata,
+    chat_metadata
 } from '../../../../script.js';
 import { getContext, extension_settings, saveMetadataDebounced} from '../../../extensions.js';
 import { formatInstructModeChat, formatInstructModePrompt } from '../../../instruct-mode.js';
@@ -91,6 +92,7 @@ Following is the message to summarize:
 const default_long_template = `[Following is a list of events that occurred in the past]:\n{{${generic_memories_macro}}}\n`
 const default_short_template = `[Following is a list of recent events]:\n{{${generic_memories_macro}}}\n`
 const default_summary_macros = {  // default set of macros for the summary prompt.
+    "lorebook": {name: "lorebook", default: true, enabled: false, type: "custom",  instruct_template: false, apply_regex: true, command: "/qm-get-message-world-info {{id}}", description: "World info used to generate the message"},
     "message": {name: "message", default: true, enabled: true,  type: "special", instruct_template: false, apply_regex: true, description: "The message being summarized"},
     "words":   {name: "words",   default: true, enabled: true,  type: "custom",  instruct_template: false, apply_regex: false, command: "/qm-max-summary-tokens", description: "Max response tokens defined by the chosen completion preset"},
     "history": {name: "history", default: true, enabled: false, type: "preset",  instruct_template: true, apply_regex: true, start: 1, end: 6, bot_messages: true, user_messages: true, bot_summaries: false, user_summaries: false},
@@ -198,18 +200,21 @@ function count_tokens(text, padding = 0) {
     let ctx = getContext();
     return ctx.getTokenCount(text, padding);
 }
+function get_message_prompts(index) {
+    // Return an object containing prompt information for a given message index
+    // We can do this by iterating through the itemizedPrompts array and trying to match the message ID
+    for (let i = 0; i < itemizedPrompts.length; i++) {
+        let itemized_prompt = itemizedPrompts[i]
+        if (itemized_prompt.mesId === index) {
+            return itemized_prompt  // found one with a matching ID
+        }
+    }
+}
 function get_last_prompt_size() {
     // return the size in tokens of the last message's prompt
     let last_index = getContext().chat.length - 1
-
-    let raw_prompt = undefined;
-    for (let i = 0; i < itemizedPrompts.length; i++) {
-        let itemized_prompt = itemizedPrompts[i]
-        if (itemized_prompt.mesId === last_index) {
-            raw_prompt = itemized_prompt.rawPrompt
-            break;
-        }
-    }
+    let prompts = get_message_prompts(last_index)
+    let raw_prompt = prompts.rawPrompt
     if (raw_prompt === undefined) {
         debug('Could not find raw prompt for message:', last_index)
         return 0
@@ -2939,7 +2944,7 @@ class SummaryPromptEditInterface {
         }
 
         if (macro.type === "preset") {  // range presets
-           return this.compute_range_macro(index, macro)
+            return this.compute_range_macro(index, macro)
         } else if (macro.type === "custom") {  // STScript
             let text = await this.evaluate_script(macro, index, "")
             if (text && macro.instruct_template) {
@@ -4111,7 +4116,7 @@ async function on_chat_event(event=null, data=null) {
                 break;
             }
 
-            index = context.chat.length - 1
+            index = context.chat.length - 1;
             if (last_message_swiped === index) break;  // this is a swipe, skip
             debug("Summarizing chat before message")
             let promise = auto_summarize_chat(true);  // auto-summarize the chat
@@ -4601,6 +4606,26 @@ function initialize_slash_commands() {
                 description: 'Index of the message or range of messages',
                 isRequired: false,
                 typeList: [ARGUMENT_TYPE.NUMBER, ARGUMENT_TYPE.RANGE]
+            }),
+        ],
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'qm-get-message-world-info',
+        aliases: ['qvink-memory-get-message-world-info'],
+        callback: async (args, index) => {
+            let chat = getContext().chat
+            if (index === "") index = chat.length-1
+            index = Number(index)
+            let prompts = get_message_prompts(index)
+            return prompts?.worldInfoString ?? ""
+        },
+        helpString: 'Return the world info used when generating a given message. If no index given, assumes the most recent message.',
+        unnamedArgumentList: [
+            SlashCommandArgument.fromProps({
+                description: 'Index of the message',
+                isRequired: false,
+                typeList: [ARGUMENT_TYPE.NUMBER]
             }),
         ],
     }));
