@@ -1,6 +1,6 @@
 # Changelog
 
-#### v1.3.14
+#### v1.3.23
 **ST Version Requirement**: You must be on ST >= v1.14.0 (relies on [this PR](https://github.com/SillyTavern/SillyTavern/pull/4841))\
 **IMPORTANT**: Your summary `Completion Preset` is now entirely determined by the `Connection Profile`. If you previously had a `Completion Preset` configured for summaries, you will need to make sure that your `Connection Profile` specifies it instead.
 - **New Feature**: `Connection Profiles` are now used for summaries **without switching** back and forth. 
