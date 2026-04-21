@@ -2752,7 +2752,7 @@ class SummaryPromptEditInterface {
         this.$prompt_role?.val(get_settings('prompt_role'))
         this.$prefill?.val(escape_string(get_settings('prefill')))
         this.$show_prefill?.prop('checked', get_settings('show_prefill', true))
-        this.macros = get_settings('summary_prompt_macros', true)
+        this.macros = Object.assign(default_summary_macros, get_settings('summary_prompt_macros', true))
 
         // for each macro, ensure default settings if not specified
         for (let name of Object.keys(this.macros)) {

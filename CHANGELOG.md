@@ -8,6 +8,7 @@
 - **New Feature**: New injection settings called `Update Triggers` which delays updating the injection threshold until certain criteria are met. This is useful for reducing how frequently your context cache is invalidated by adding summaries.
 - **New Feature**: New slash command `/qm-profile` to switch config profiles.
 - **New Feature**: The slash command `/qm-summarize` now accepts a range of indexes and an optional toggle for disabling the progress bar.
+- **New Feature**: New prompt macro: `{{lorebook}}` will provide the lorebook entries that were used to generate the given message.
 - **Changed**: Some config settings had their name adjusted (e.g. `Start Injecting After` -> `Injection Threshold`, `Remove Messages After Threshold` -> `Remove Messages`, `Do Not Inject` -> `Macro Only`, `Static Memory Mode` -> `Always Separate`, `Message Length Threshold` -> `Minimum Length`). These changes have not affected their functionality.
 - **Changed**: Some radio configs have been changed to dropdowns to save space.
 - **Changed**: Adjusted the `Edit Memory` filter UI to be a bit more compact.
