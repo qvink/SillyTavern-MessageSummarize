@@ -4445,6 +4445,17 @@ function initialize_slash_commands() {
     }));
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
+        name: 'qm-refresh',
+        aliases: ['qvink-memory-refresh'],
+        helpString: 'Refresh the current memory state',
+        callback: (args) => {
+            refresh_settings();
+            refresh_memory();
+            return "";
+        },
+    }));
+
+    SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'qm-hard-reset',
         aliases: ['qvink-memory-hard-reset'],
         helpString: 'WARNING: Hard reset all settings for this extension. All config profiles will be deleted.',
@@ -4561,19 +4572,31 @@ function initialize_slash_commands() {
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({
         name: 'qm-toggle-exclude',
         aliases: ['qvink-memory-toggle-exclude'],
-        helpString: 'Toggle to force-exclude a memory, regardless of other inclusion criteria (default is the most recent message).',
-        callback: (args, index) => {
-            if (index === "") index = null  // if not provided the index is an empty string, but we need it to be null to get the default behavior
-            forget_message_toggle(index);
+        helpString: 'Toggle whether summaries are force-excluded, regardless of other inclusion criteria (default toggles the most recent message).',
+        callback: (args, indexes) => {
+            indexes = get_message_indexes_from_command_range(indexes)
+            let exclude = args.exclude != undefined ?args.exclude == "true" : null
+            if (indexes !== undefined) {
+                forget_message_toggle(indexes, exclude);
+            }
+
             return "";
         },
         unnamedArgumentList: [
             SlashCommandArgument.fromProps({
-                description: 'Index of the message to toggle',
+                description: 'Index of the message or range of messages',
                 isRequired: false,
                 typeList: ARGUMENT_TYPE.NUMBER,
-            }),
+            })
         ],
+        namedArgumentList: [
+            SlashCommandNamedArgument.fromProps({
+                name: "exclude",
+                description: 'Whether the messages are excluded',
+                isRequired: false,
+                typeList: ARGUMENT_TYPE.BOOLEAN,
+            }),
+        ]
     }));
 
     SlashCommandParser.addCommandObject(SlashCommand.fromProps({

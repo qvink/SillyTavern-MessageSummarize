@@ -1,6 +1,6 @@
 # Changelog
 
-#### v1.3.23
+#### v1.3.24
 **ST Version Requirement**: You must be on ST >= v1.14.0 (relies on [this PR](https://github.com/SillyTavern/SillyTavern/pull/4841))\
 **IMPORTANT**: Your summary `Completion Preset` is now entirely determined by the `Connection Profile`. If you previously had a `Completion Preset` configured for summaries, you will need to make sure that your `Connection Profile` specifies it instead.
 - **New Feature**: `Connection Profiles` are now used for summaries **without switching** back and forth. 
@@ -8,6 +8,8 @@
 - **New Feature**: New injection settings called `Update Triggers` which delays updating the injection threshold until certain criteria are met. This is useful for reducing how frequently your context cache is invalidated by adding summaries.
 - **New Feature**: New slash command `/qm-profile` to switch config profiles.
 - **New Feature**: The slash command `/qm-summarize` now accepts a range of indexes and an optional toggle for disabling the progress bar.
+- **New Feature**: The slash command `/qm-toggle-exclude` now accepts a range of indexes and a boolean value to set.
+- **New Feature**: New slash command `/qm-refresh` to force a refresh of the current memory state.
 - **New Feature**: New prompt macro: `{{lorebook}}` will provide the lorebook entries that were used to generate the given message.
 - **Changed**: Some config settings had their name adjusted (e.g. `Start Injecting After` -> `Injection Threshold`, `Remove Messages After Threshold` -> `Remove Messages`, `Do Not Inject` -> `Macro Only`, `Static Memory Mode` -> `Always Separate`, `Message Length Threshold` -> `Minimum Length`). These changes have not affected their functionality.
 - **Changed**: Some radio configs have been changed to dropdowns to save space.

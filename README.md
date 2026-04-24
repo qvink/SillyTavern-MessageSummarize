@@ -130,7 +130,7 @@ Note: all commands have `/qvink-memory-` as an alias.
 - `/qm-toggle-edit-interface`: Toggles the "Edit Memory" interface
 - `/qm-toggle-injection-preview`: Toggles a preview of the text that will be injected
 - `/qm-toggle-remember`: Mark a given message index for long-term memory, summarizing it if not already. Same as clicking the "Brain" icon in the message button menu.
-- `/qm-toggle-exclude`: Toggles the manual exclusion of the memory for the given message index. Same as clicking the "Force Exclude" button in the message button menu.
+- `/qm-toggle-exclude`: Toggles the manual exclusion of a memory by index or range of memory indexes. Same as clicking the "Force Exclude" button in the message button menu.
 - `/qm-get`: Get the memory associated with a message or range of messages. Defaults to the most recent message.
 - `/qm-set`: Set the memory associated with a message to the given text.
 - `/qm-summarize`: Summarizes a message by index or a range of messages (defaults to most recent message). Optionally disable the progress bar.
