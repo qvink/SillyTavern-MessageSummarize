@@ -468,7 +468,7 @@ function get_connection_profiles() {
 
 }
 function verify_connection_profile(id) {
-    // check if the given connection profile ID is valid.
+    // check if the given connection profile ID for summarization is valid.
     if (!check_connection_profiles_active()) return;  // if the extension isn't active, return
     if (id === "") return true;  // no profile selected, always valid
     let data = get_connection_profile_data(id)  // found an existing profile for this ID
@@ -486,6 +486,9 @@ function get_connection_profile_api(id) {
     if (!check_connection_profiles_active()) return;  // if the extension isn't active, return
     if (id === undefined) id = get_summary_connection_profile()
     let data = get_connection_profile_data(id)
+
+    // If there is no connection profile
+    if (data === undefined) return
 
     // If the API type isn't defined, it might be excluded from the connection profile. Assume based on mode.
     if (data.api === undefined) {
@@ -508,6 +511,7 @@ function get_summary_connection_profile() {
     // If none selected, invalid, or connection profiles not active, use the current profile
     if (id === "" || !verify_connection_profile(id) || !check_connection_profiles_active()) {
         id = get_current_connection_profile();
+        if (id === "") return   // No current chat connection profile selected
     }
 
     return id
@@ -523,9 +527,10 @@ function get_summary_completion_preset() {
 
     // First get the preset name for the current summary connection profile
     let id = get_summary_connection_profile()
+    if (id === undefined) return
     let profile = get_connection_profile_data(id)
     let preset;
-    if (profile.preset) {
+    if (profile?.preset) {
         debug("Summary connection profile has a preset: ", profile.preset)
         let name = profile.preset
         let api = get_connection_profile_api(id)
@@ -547,7 +552,7 @@ function get_summary_completion_preset() {
     }
 
     if (preset === undefined) {
-        console.error(`Preset ${preset} not found`);
+        error(`Preset ${preset} not found`);
     }
 
     return preset
@@ -569,7 +574,8 @@ function get_chat_context_size() {
 function get_summary_context_size() {
     // Get the context size for the current summary profile
     let preset = get_summary_completion_preset()
-    let max_context = preset?.max_length || preset?.openai_max_context
+    if (preset === undefined) return
+    let max_context = preset.max_length || preset.openai_max_context
     let max_response = get_summary_max_tokens(preset)
     let context = max_context - max_response
     debug("Got summary preset effective context size: ", context)
@@ -961,10 +967,6 @@ async function update_connection_profile_dropdown() {
     }
 
     let profile_id = get_settings('connection_profile')
-    if (!verify_connection_profile(profile_id)) {
-        toast_debounced(`Selected summary connection profile ID is invalid: ${ID}`, "warning")
-        profile_id = ""  // fall back to "same as current"
-    }
     $connection_select.val(profile_id)
 
     // set a click event to refresh the dropdown
@@ -1179,7 +1181,17 @@ function load_profile(profile=null) {
     if (get_settings("notify_on_profile_switch") && current_profile !== profile) {
         toast(`Switched to profile "${profile}"`, 'info')
     }
+
+    // Migrate from previous versions
     migrate_profile()
+
+    // Reset connection profile if it's not valid
+    let id = get_settings('connection_profile')
+    if (!verify_connection_profile(id)) {
+        set_settings('connection_profile', "")
+        toast(`Connection profile "${id}" was not valid, it has been reset. Config has not been saved.`, "warning")
+    }
+
     refresh_settings();
     refresh_memory();
 }
@@ -1382,7 +1394,7 @@ function migrate_profile() {
     if (id && data) {
         set_settings('connection_profile', data.id)
         save_profile()
-        log("Connection profile name swapped with ID.")
+        log(`Connection profile name (${id}) swapped with ID (${data.id})`)
     }
 }
 
@@ -2849,6 +2861,11 @@ class SummaryPromptEditInterface {
         let messages = await this.create_summary_prompt(index, text)
         let profile_id = get_summary_connection_profile()
 
+        if (profile_id === undefined) {
+            error("Cannot display prompt, no connection profile selected.")
+            return
+        }
+
         let prompt = this.ctx.ConnectionManagerRequestService.constructPrompt(messages, profile_id)
 
         if (typeof prompt === 'string') {
@@ -3393,9 +3410,9 @@ class SummaryQueue {
             error(`Failed to summarize message ${index}: ${err}`);
             set_data(message, 'error', err || "Summarization failed");  // store the error message
             set_data(message, 'memory', null);  // clear the memory if generation failed
-            set_data(message, 'edited', false);  // clear the error message
-            set_data(message, 'prefill', null)
-            set_data(message, 'reasoning', null)
+            set_data(message, 'edited', false);
+            set_data(message, 'prefill', null);
+            set_data(message, 'reasoning', null);
         }
 
         // update the message summary text again now with the memory, still no styling
@@ -3410,12 +3427,18 @@ class SummaryQueue {
     async summarize_text(messages, profile) {
         let ctx = getContext()
 
+        if (profile === undefined) {
+            throw new Error("No connection profile selected.")
+        }
+
         // get size of text
         let token_size = messages.reduce((acc, p) => acc + count_tokens(p.content), 0);
 
         let context_size = get_summary_context_size();
-        if (token_size > context_size) {
-            error(`Text to summarize (${token_size}) exceeds summary context size (${context_size}).`);
+        if (context_size === undefined) {
+            toast(`Context size couldn't be identified`, "warning")
+        } else if (token_size > context_size) {
+            toast(`Text to summarize (${token_size}) exceeds summary context size (${context_size}).`, "warning");
         }
 
         let result = await ctx.ConnectionManagerRequestService.sendRequest(profile, messages)
