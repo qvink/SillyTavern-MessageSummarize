@@ -50,6 +50,7 @@ const PROGRESS_BAR_ID = `${MODULE_NAME}_progress_bar`;
 const css_message_div = `qvink_memory_display`
 const css_short_memory = `qvink_short_memory`
 const css_long_memory = `qvink_long_memory`
+const css_long_auto_memory = `qvink_long_auto_memory`
 const css_remember_memory = `qvink_old_memory`
 const css_exclude_memory = `qvink_exclude_memory`
 const css_lagging_memory = `qvink_lagging_memory`
@@ -73,6 +74,10 @@ const remember_button_class = `${MODULE_NAME}_remember_button`
 const summarize_button_class = `${MODULE_NAME}_summarize_button`
 const edit_button_class = `${MODULE_NAME}_edit_button`
 const forget_button_class = `${MODULE_NAME}_forget_button`
+const automated_memory_auto_button_class = `${MODULE_NAME}_automated_memory_auto_button`
+
+// Count new messages since last automated LTM run
+var automated_memory_auto_message_counter = 0
 
 // Settings
 const default_prompt = `You are a summarization assistant. Summarize the given fictional narrative in a single, very short and concise statement of fact.
@@ -88,6 +93,39 @@ Following is a history of messages for context:
 
 Following is the message to summarize:
 {{message}}
+`
+const default_automated_memory_prompt = `You are a narrative analysis assistant for an ongoing fictional roleplay. Your task: decide which message summaries should be preserved as long-term memories.
+
+The key test for each summary: does it introduce a fact, name, relationship detail, backstory, emotional development, or situation change that would be LOST if this summary were removed? If removing it would leave no gap in the story's record, it is not worth preserving.
+
+PRESERVE messages that introduce new information such as:
+- A character's name, identity, or backstory being revealed
+- New facts about a character's situation, history, or motivations
+- Relationship developments (friendships, conflicts, romance, alliances, betrayals, trust shifts)
+- Characters bonding, warming up to each other, or forming connections — or the opposite: growing hostile, distrustful, or distant — even through casual interaction
+- Characters observing or reacting to dynamics between others (e.g., a parent noticing someone bonding with their child, someone witnessing a confrontation or slight)
+- Events that change the characters' situation or the story's direction
+- Key decisions or commitments made by characters
+- New locations, setting details, or world-building facts
+- Conflicts being introduced or resolved
+- Changes in a character's status, abilities, or position
+- Promises, agreements, or plans characters make
+- Deaths, departures, or arrivals
+
+EXCLUDE messages that are:
+- Conversational scaffolding — questions, comments, or small talk that don't themselves reveal new facts or develop relationships (even if they prompt a reveal in the next message)
+- Redundant with another already-remembered summary (marked Long-term: Yes)
+- Purely transitional actions with no new narrative content
+- Minor reactions or internal thoughts that don't reveal anything new or shift any dynamic
+
+This is an ongoing story — you cannot know for certain what will matter later. When a summary contains new information, preserve it even if it seems minor now.
+
+Below are the message summaries to analyze. Each line has this format: Message NUMBER | Long-term: Yes/No | Summary: TEXT
+Messages already marked "Long-term: Yes" are examples of the kind of summary worth preserving — use them as a reference for the quality and relevance bar when evaluating unmarked messages.
+
+{{summaries}}
+
+Respond with ONLY the message numbers as a comma-separated list. Do not include any other text, explanation, or formatting. If no messages qualify, respond with the single word NONE.
 `
 const default_long_template = `[Following is a list of events that occurred in the past]:\n{{${generic_memories_macro}}}\n`
 const default_short_template = `[Following is a list of recent events]:\n{{${generic_memories_macro}}}\n`
@@ -107,11 +145,19 @@ const default_settings = {
 
     // summarization settings
     prompt: default_prompt,
+    automated_memory_prompt: default_automated_memory_prompt,
     summary_prompt_macros: default_summary_macros,  // macros for the summary prompt interface
     prompt_role: extension_prompt_roles.SYSTEM,
     prefill: "",   // summary prompt prefill
     show_prefill: false, // whether to show the prefill when memories are displayed
     connection_profile: "",  // connection profile to use for summarization. Empty ("") indicates the same as currently selected.
+
+    // automated long-term memory settings
+    automated_memory_scope: 'all',   // 'all' = all messages, 'new' = since last long-term memory, 'last_n' = last N messages
+    automated_memory_last_n: 50,   // number of messages to process when scope is 'last_n'
+    automated_memory_allow_removal: false,   // whether the analysis can also un-mark existing long-term memories
+    automated_memory_auto: false,   // whether to automatically trigger LTM analysis every N messages
+    automated_memory_auto_interval: 25,   // how many new messages between automatic LTM runs (minimum 10)
 
     auto_summarize: true,   // whether to automatically summarize new chat messages
     summarization_delay: 0,  // delay auto-summarization by this many messages (0 summarizes immediately after sending, 1 waits for one message, etc)
@@ -1032,6 +1078,13 @@ function refresh_settings() {
         get_settings_element('long_term_depth')?.parent().toggle(mid_chat)
         get_settings_element('long_term_role')?.parent().toggle(mid_chat)
 
+        // Disable the last_n input unless the last_n scope is selected
+        let scope = get_settings('automated_memory_scope');
+        get_settings_element('automated_memory_last_n')?.prop('disabled', scope !== 'last_n');
+
+        // Disable the interval input when auto LTM is off
+        let automated_memory_auto = get_settings('automated_memory_auto');
+        get_settings_element('automated_memory_auto_interval')?.prop('disabled', !automated_memory_auto);
 
     } else {  // memory is disabled for this chat
         $(`.${settings_content_class} .settings_input`).prop('disabled', true);  // disable all settings
@@ -1303,6 +1356,7 @@ async function delete_profile() {
         if (name === profile) {
             delete character_profiles[id]
         }
+        set_settings('character_profiles', character_profiles)
     }
     set_settings('character_profiles', character_profiles)
 
@@ -1412,12 +1466,16 @@ function get_message_div(index) {
 function get_summary_style_class(message) {
     let include = get_data(message, 'include');
     let remember = get_data(message, 'remember');
+    let remember_auto = get_data(message, 'remember_auto');
     let exclude = get_data(message, 'exclude');  // force-excluded by user
     let lagging = get_data(message, 'lagging');  // not injected yet
 
     let style = ""
     if (remember && include) {  // marked to be remembered and included in memory anywhere
         style = css_long_memory
+    }
+    else if (remember_auto && include) {  // marked to be remembered automatically and included in memory anywhere
+        style = css_long_auto_memory
     } else if (include === "short") {  // not marked to remember, but included in short-term memory
         style = css_short_memory
     } else if (remember) {  // marked to be remembered but not included in memory
@@ -1678,6 +1736,13 @@ class MemoryEditInterface {
             "default": true,
             "count": 0
         },
+        "long_term_auto": {
+            "title": "Summaries automatically tagged for long-term memory by automated analysis",
+            "display": "Long-Term (Auto)",
+            "check": (msg) => get_data(msg, 'remember_auto'),
+            "default": true,
+            "count": 0
+        },
         "excluded": {
             "title": "Summaries not in short-term or long-term memory",
             "display": "Forgot",
@@ -1765,6 +1830,7 @@ class MemoryEditInterface {
     <div><button id="bulk_exclude"    class="menu_button" title="Toggle inclusion of selected summaries from all memory">     <i class="fa-solid fa-ban"></i>Exclude</button></div>
     <div><button id="bulk_copy"       class="menu_button" title="Copy selected memories to clipboard">                        <i class="fa-solid fa-copy"></i>Copy</button></div>
     <div><button id="bulk_summarize"  class="menu_button" title="Re-Summarize selected memories">                             <i class="fa-solid fa-quote-left"></i>Summarize</button></div>
+    <div><button id="bulk_auto_ltm"   class="menu_button" title="Run automated long-term memory analysis on selected memories"><i class="fa-solid fa-wand-magic-sparkles"></i>Auto Long-Term</button></div>
     <div><button id="bulk_delete"     class="menu_button" title="Delete selected memories">                                   <i class="fa-solid fa-trash"></i>Delete</button></div>
     <div><button id="bulk_regex"      class="menu_button" title="Run the selected regex script on selected memories">         <i class="fa-solid fa-shuffle"></i>Regex Replace</button></div>
     <div><select id="regex_selector"  title="Choose regex script"></select>
@@ -1885,6 +1951,10 @@ class MemoryEditInterface {
         })
         this.$content.find(`#bulk_summarize`).on('click', async () => {
             await summaryQueue.summarize(this.get_sorted_selection());  // summarize in ascending order
+        })
+        this.$content.find(`#bulk_auto_ltm`).on('click', async () => {
+            await automated_long_term_memory(this.get_sorted_selection());
+            this.update_table();
         })
         this.$content.find(`#bulk_delete`).on('click', () => {
             this.get_sorted_selection().forEach(id => {
@@ -2015,6 +2085,7 @@ class MemoryEditInterface {
         let filter_no_summary = this.filter_bar.no_summary.filtered()
         let filter_short_term = this.filter_bar.short_term.filtered()
         let filter_long_term = this.filter_bar.long_term.filtered()
+        let filter_long_term_auto = this.filter_bar.long_term_auto.filtered()
         let filter_excluded = this.filter_bar.excluded.filtered()
         let filter_force_excluded = this.filter_bar.force_excluded.filtered()
         let filter_edited = this.filter_bar.edited.filtered()
@@ -2029,6 +2100,7 @@ class MemoryEditInterface {
 
             if (filter_short_term           && this.filter_bar.short_term.check(msg)) include = true;
             else if (filter_long_term       && this.filter_bar.long_term.check(msg)) include = true;
+            else if (filter_long_term_auto  && this.filter_bar.long_term_auto.check(msg)) include = true;
             else if (filter_no_summary      && this.filter_bar.no_summary.check(msg)) include = true;
             else if (filter_errors          && this.filter_bar.errors.check(msg)) include = true;
             else if (filter_excluded        && this.filter_bar.excluded.check(msg)) include = true;
@@ -2484,7 +2556,9 @@ class SummaryPromptEditInterface {
         // buttons
         this.$preview.on('click', () => this.preview_prompt())
         this.$add_macro.on('click', () => this.new_macro())
-        this.$restore.on('click', () => this.$prompt.val(default_settings["prompt"]))
+        this.$restore.on('click', () => {
+            this.$prompt.val(default_settings["prompt"]);
+        })
         this.$open_macros.on('click', () => {
             this.$content.find('.toggle-macro').toggle()
         })
@@ -3596,6 +3670,7 @@ async function remember_message_toggle(indexes=null, value=null) {
         let message = context.chat[index]
         set_data(message, 'remember', value);
         set_data(message, 'exclude', false);  // regardless, remove excluded flag
+        set_data(message, 'remember_auto', false);  // always clear auto flag when manually toggling
 
         let memory = get_data(message, 'memory')
         if (value && !memory) {
@@ -3615,6 +3690,174 @@ async function remember_message_toggle(indexes=null, value=null) {
         await summaryQueue.summarize(summarize);
     }
     refresh_memory();
+}
+async function remember_auto_message_toggle(indexes=null, value=null) {
+    // Toggle the "remember_auto" (automated long-term memory) status of a set of messages.
+    // Messages already manually tagged with 'remember' are never touched.
+    let context = getContext();
+
+    if (!Array.isArray(indexes)) {
+        indexes = [indexes]
+    } else if (indexes === null) {
+        indexes = [Math.max(context.chat.length-1, 0)]
+    }
+
+    // Filter out any messages already manually marked as long-term
+    indexes = indexes.filter(i => !get_data(context.chat[i], 'remember'));
+
+    let summarize = [];
+
+    function set(index, val) {
+        let message = context.chat[index]
+        set_data(message, 'remember_auto', val);
+        set_data(message, 'exclude', false);
+
+        let memory = get_data(message, 'memory')
+        if (val && !memory) {
+            summarize.push(index)
+        }
+        debug(`Set message ${index} remember_auto status: ${val}`);
+    }
+
+    function check(index) {
+        return get_data(context.chat[index], 'remember_auto')
+    }
+
+    toggle_memory_value(indexes, value, check, set)
+
+    if (summarize.length > 0) {
+        await summaryQueue.summarize(summarize);
+    }
+    refresh_memory();
+}
+function collect_ltm_scope_indexes(scope, end_index) {
+    // Return all chat indexes within the scope window (not filtered by whether they have a summary).
+    let chat = getContext().chat;
+    let last_index = end_index ?? chat.length - 1;
+    let start_index = 0;
+
+    // Start from the most recent long-term memory (searching back from last_index)
+    if (scope === 'new') {
+        for (let i = last_index; i >= 0; i--) {
+            if (get_data(chat[i], 'remember') || get_data(chat[i], 'remember_auto')) {
+                start_index = i;
+                break;
+            }
+        }
+    // Count back N summarized messages from last_index
+    } else if (scope === 'last_n') {
+        let n = get_settings('automated_memory_last_n') || 50;
+        let count = 0;
+        for (let i = last_index; i >= 0; i--) {
+            if (get_data(chat[i], 'memory')) {
+                count++;
+                if (count >= n) {
+                    start_index = i;
+                    break;
+                }
+            }
+        }
+    }
+
+    let indexes = [];
+    for (let i = start_index; i <= last_index; i++) indexes.push(i);
+    return indexes;
+}
+function build_ltm_summary_lines(indexes) {
+    // Given a list of chat indexes, return formatted summary lines and the subset of indexes
+    // that actually have a summary, for passing to the LLM.
+    let chat = getContext().chat;
+    let summary_lines = [];
+    let valid_indexes = [];
+    for (let i of indexes) {
+        let memory = get_data(chat[i], 'memory');
+        if (!memory) continue;
+        let is_remembered = (get_data(chat[i], 'remember') || get_data(chat[i], 'remember_auto')) ? 'Yes' : 'No';
+        summary_lines.push(`Message ${i} | Long-term: ${is_remembered} | Summary: ${memory}`);
+        valid_indexes.push(i);
+    }
+    return { summary_lines, valid_indexes };
+}
+async function automated_long_term_memory(indexes=null, end_index=null) {
+    // Use an LLM to identify critically important summaries and mark them as long-term memories.
+    // indexes: if provided, analyse exactly these message indexes instead of deriving a scope window
+    // end_index: if provided, treat this as the latest message (inclusive) instead of the end of the chat
+    let chat = getContext().chat;
+
+    // Step 1: Collect summaries — either from explicit indexes or by deriving a scope window
+    let scope_indexes = indexes ?? collect_ltm_scope_indexes(get_settings('automated_memory_scope'), end_index);
+    let { summary_lines, valid_indexes } = build_ltm_summary_lines(scope_indexes);
+
+    if (summary_lines.length === 0) {
+        log('No summaries found for automated long-term memory analysis.');
+        toastr.warning('No summarized messages found to analyze.', MODULE_NAME_FANCY);
+        return;
+    }
+
+    // Step 2: Send summaries to the LLM for analysis
+    let prompt_text = get_settings('automated_memory_prompt').replace('{{summaries}}', summary_lines.join('\n'));
+    let messages = [{role: 'system', content: prompt_text}];
+    let profile = get_summary_connection_profile();
+
+    let $progress_toast = toastr.info(`Analyzing ${summary_lines.length} message summaries...`, MODULE_NAME_FANCY, { timeOut: 0, extendedTimeOut: 0, tapToDismiss: false });
+    debug('Running automated LTM analysis...');
+    let result;
+    try {
+        result = await summaryQueue.summarize_text(messages, profile);
+    } catch (e) {
+        toastr.clear($progress_toast);
+        error(`Automated LTM analysis failed: ${e.message || e}`);
+        return;
+    }
+    toastr.clear($progress_toast);
+
+    if (!result) {
+        error('Automated LTM analysis returned no result.');
+        return;
+    }
+
+    let content = result.content;
+    debug(`Automated LTM response: ${content}`);
+
+    let all_confirmed;
+    if (content.trim().toUpperCase() === 'NONE') {
+        all_confirmed = [];
+    } else {
+        let valid_set = new Set(valid_indexes);
+        all_confirmed = (content.match(/\d+/g)?.map(Number) || []).filter(n => valid_set.has(n));
+    }
+
+    if (all_confirmed === null) return;
+
+    if (all_confirmed.length === 0) {
+        log('Automated long-term memory analysis: no critically important messages identified.');
+        toastr.info('Analysis complete — no messages were identified as critically important.', MODULE_NAME_FANCY);
+        return;
+    }
+
+    debug(`Automated LTM marking messages as long-term: ${all_confirmed.join(', ')}`);
+
+    // Step 5: Mark confirmed messages as long-term, and optionally remove the flag from others
+    let confirmed_set = new Set(all_confirmed);
+
+    // Count only messages not already marked before toggling, so the toast reflects newly marked messages
+    let newly_marked_count = all_confirmed.filter(i => !get_data(chat[i], 'remember') && !get_data(chat[i], 'remember_auto')).length;
+    await remember_auto_message_toggle(all_confirmed, true);
+
+    let removed_count = 0;
+    if (get_settings('automated_memory_allow_removal')) {
+        let to_remove = valid_indexes.filter(i => !confirmed_set.has(i) && get_data(chat[i], 'remember_auto'));
+        if (to_remove.length > 0) {
+            debug(`Automated LTM removing long-term flag from messages: ${to_remove.join(', ')}`);
+            await remember_auto_message_toggle(to_remove, false);
+            removed_count = to_remove.length;
+        }
+    }
+
+    let summary_msg = `Long-term memory updated — ${newly_marked_count} message${newly_marked_count !== 1 ? 's' : ''} newly marked as important.`;
+    if (removed_count > 0) summary_msg += ` ${removed_count} removed.`;
+    toastr.success(summary_msg, MODULE_NAME_FANCY);
+    log(summary_msg);
 }
 function forget_message_toggle(indexes=null, value=null) {
     // Toggle the "forget" status of a message
@@ -3843,7 +4086,7 @@ function update_message_inclusion_flags() {
             }
 
             // consider this for short term memories as long as we aren't separating long-term or (if we are), this isn't a long-term
-            if (!separate_long_term || !get_data(message, 'remember')) {
+            if (!separate_long_term || (!get_data(message, 'remember') && !get_data(message, 'remember_auto'))) {
                 let new_short_token_size = short_token_size + sep_size + count_tokens(get_memory(message))
                 if (new_short_token_size > short_token_limit) {  // over context limit
                     short_limit_reached = true;
@@ -3856,7 +4099,7 @@ function update_message_inclusion_flags() {
         }
 
         // if the short-term limit has been reached (or we are separating), check the long-term limit.
-        let remember = get_data(message, 'remember');
+        let remember = get_data(message, 'remember') || get_data(message, 'remember_auto');
         if (!long_limit_reached && remember) {  // long-term limit hasn't been reached yet and the message was marked to be remembered
             let new_long_token_size = long_token_size + sep_size + count_tokens(get_memory(message))
             if (new_long_token_size > long_token_limit) {  // over context limit
@@ -4079,6 +4322,21 @@ async function auto_summarize_chat(skip_initial_delay=true) {
     await summaryQueue.summarize(messages_to_summarize, skip_initial_delay, show_progress);
 }
 
+async function check_automated_memory_auto_trigger() {
+    // Increment the message counter and fire automated_long_term_memory if the interval has been reached
+    if (!get_settings('automated_memory_auto') || !chat_enabled()) return;
+
+    automated_memory_auto_message_counter++;
+    let interval = Math.max(10, get_settings('automated_memory_auto_interval') || 25);
+    debug(`Auto LTM counter: ${automated_memory_auto_message_counter} / ${interval}`);
+
+    if (automated_memory_auto_message_counter >= interval) {
+        automated_memory_auto_message_counter = 0;
+        log('Auto LTM interval reached, running automated long-term memory analysis...');
+        await automated_long_term_memory();
+    }
+}
+
 // Event handling
 var last_message_swiped = null;  // if an index, that was the last message swiped
 var last_message = null; // if an index, that was the last message sent
@@ -4104,6 +4362,7 @@ async function on_chat_event(event=null, data=null) {
 
 
             reset_injection_threshold()
+            automated_memory_auto_message_counter = 0;  // reset counter on chat change
             auto_load_profile();  // load the profile for the current chat or character
             refresh_memory();  // refresh the memory state
             if (context?.chat?.length) {
@@ -4144,6 +4403,12 @@ async function on_chat_event(event=null, data=null) {
             last_message_swiped = null;
             last_message = null;
             if (!chat_enabled()) break;  // if chat is disabled, do nothing
+
+            // Count user messages toward auto LTM if user messages are included in summarization
+            if (get_settings('include_user_messages')) {
+                await check_automated_memory_auto_trigger();
+            }
+
             if (!get_settings('auto_summarize')) break;  // if auto-summarize is disabled, do nothing
             if (just_opened) break;  // don't auto-summarize if just opened the chat
 
@@ -4180,6 +4445,7 @@ async function on_chat_event(event=null, data=null) {
                 refresh_memory()
             } else { // not a swipe or continue
                 last_message_swiped = null
+                await check_automated_memory_auto_trigger();  // count new char message toward auto LTM
                 if (!get_settings('auto_summarize')) break;  // if auto-summarize is disabled, do nothing
                 if (get_settings("auto_summarize_on_send")) break;  // if auto_summarize_on_send is enabled, don't auto-summarize on character message
                 debug("New message detected, summarizing")
@@ -4249,6 +4515,14 @@ function initialize_settings_listeners() {
     bind_function('#stop_summarization', () => summaryQueue.stop());
     bind_function('#revert_settings', reset_settings);
 
+    bind_function('#edit_automated_memory_prompt', async () => {
+        let description = `
+<ul style="text-align: left; font-size: smaller;">
+    <li>This prompt is sent to the LLM with all message summaries to identify critically important long-term memories.</li>
+    <li><b>{{summaries}}</b> will be replaced with the formatted list of message summaries.</li>
+</ul>`
+        get_user_setting_text_input('automated_memory_prompt', t`Edit Automated Memory Prompt`, description)
+    })
     bind_function('#toggle_chat_memory', () => toggle_chat_enabled(), false);
     bind_function('#edit_memory_state', () => memoryEditInterface.show())
     bind_function("#refresh_memory", () => refresh_memory());
@@ -4319,6 +4593,12 @@ function initialize_settings_listeners() {
     bind_setting('#long_term_context_limit', 'long_term_context_limit', 'number')
     bind_setting('#long_term_context_type', 'long_term_context_type', 'text')
 
+    bind_setting('input[name="automated_memory_scope"]', 'automated_memory_scope', 'text');
+    bind_setting('#automated_memory_last_n', 'automated_memory_last_n', 'number');
+    bind_setting('#automated_memory_allow_removal', 'automated_memory_allow_removal', 'boolean');
+    bind_setting('#automated_memory_auto', 'automated_memory_auto', 'boolean');
+    bind_setting('#automated_memory_auto_interval', 'automated_memory_auto_interval', 'number');
+
     bind_setting('#debug_mode', 'debug_mode', 'boolean');
     bind_setting('#display_memories', 'display_memories', 'boolean')
     bind_setting('#default_chat_enabled', 'default_chat_enabled', 'boolean');
@@ -4336,6 +4616,7 @@ function initialize_message_buttons() {
     let ctx = getContext()
 
     let html = `
+<div title="${t`Process Long-Term Memory (analyze all summaries and automatically tag critically important messages for long-term memory)`}" class="mes_button ${automated_memory_auto_button_class} fa-solid fa-cloud-bolt" tabindex="0"></div>
 <div title="${t`Remember (toggle inclusion of summary in long-term memory)`}" class="mes_button ${remember_button_class} fa-solid fa-brain" tabindex="0"></div>
 <div title="${t`Force Exclude (toggle inclusion of summary from all memory)`}" class="mes_button ${forget_button_class} fa-solid fa-ban" tabindex="0"></div>
 <div title="${t`Edit Summary`}" class="mes_button ${edit_button_class} fa-solid fa-pen-fancy" tabindex="0"></div>
@@ -4347,6 +4628,11 @@ function initialize_message_buttons() {
 
     // button events
     let $chat = $("div#chat")
+    $chat.on("click", `.${automated_memory_auto_button_class}`, async function () {
+        const message_block = $(this).closest(".mes");
+        const message_id = Number(message_block.attr("mesid"));
+        await automated_long_term_memory(null, message_id);
+    });
     $chat.on("click", `.${remember_button_class}`, async function () {
         const message_block = $(this).closest(".mes");
         const message_id = Number(message_block.attr("mesid"));

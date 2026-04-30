@@ -310,6 +310,44 @@
                     </select>
                 </label>
 
+                <!-- Automated Long-term memory -->
+                <hr>
+                <h4 class="textAlignCenter">Automated Long-Term Memory <i class="fa-solid fa-info-circle" title="Settings that control how automated long-term memory analysis works when triggered."></i></h4>
+                <div class="flex-container justifyspacebetween alignitemscenter">
+                    <button id="edit_automated_memory_prompt" class="menu_button flex1" title="Edit the prompt used to analyze summaries and identify critically important long-term memories."><span>Edit</span></button>
+                </div>
+
+
+                <label title="When enabled, the analysis can also remove the long-term memory flag from previously tagged messages that are no longer considered important in the broader context of the narrative." class="checkbox_label">
+                    <input id="automated_memory_allow_removal" type="checkbox" />
+                    <span>Allow Long-Term Memory Removal</span>
+                </label>
+
+                <label title="When enabled, long-term memory analysis runs automatically after every N new messages using the scope selected above. For example, with scope set to 'Process Last 50 Memories' and interval set to 25, the last 50 messages are analyzed every 25 messages — overlap is intentional and helps ensure nothing important is missed." class="checkbox_label">
+                    <input id="automated_memory_auto" type="checkbox" />
+                    <span>Auto-Process Long-Term Memory</span>
+                </label>
+                <label title="How many new messages must arrive before automatically triggering long-term memory analysis. Minimum 10. This controls how often analysis runs, not how many messages are analyzed — that is determined by the scope setting above." class="checkbox_label">
+                    <input id="automated_memory_auto_interval" class="text_pole widthUnset inline_setting" type="number" min="10" max="999" />
+                    <span>Memory Interval</span>
+                </label>
+
+                <div class="radio_group">
+                    <label title="Analyze all summarized messages to find any that should be promoted to long-term memory.">
+                        <input type="radio" name="automated_memory_scope" value="all" />
+                        <span>Process All Memories</span>
+                    </label>
+                    <label title="Only analyze messages from the most recent long-term memory entry up to the latest message. Useful for incremental updates without reprocessing the full history.">
+                        <input type="radio" name="automated_memory_scope" value="new" />
+                        <span>Process New Memories</span>
+                    </label>
+                    <label title="Only analyze the last N summarized messages. Useful for large chats where processing everything would be expensive.">
+                        <input type="radio" name="automated_memory_scope" value="last_n" />
+                        <span>Process Last</span>
+                        <input id="automated_memory_last_n" class="text_pole widthUnset inline_setting" type="number" min="1" max="999" />
+                        <span>Memories</span>
+                    </label>
+                </div>
 
                 <!-- Misc. -->
                 <hr>
