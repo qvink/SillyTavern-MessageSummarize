@@ -3468,7 +3468,6 @@ function parse_reasoning(message, summary=null, reasoning=null, prefill=null) {
     summary = summary ?? get_data(message, 'memory')
     let ctx = getContext()
 
-    // stick the prefill on the front and try to parse reasoning
     let profile_id = get_summary_connection_profile()
     let profile_data = get_connection_profile_data(profile_id)
     let template_name = profile_data["reasoning-template"]
@@ -3477,13 +3476,20 @@ function parse_reasoning(message, summary=null, reasoning=null, prefill=null) {
         return
     }
     let template = ctx.getReasoningTemplateByName(template_name)
-    let parsed = ctx.parseReasoningFromString(`${prefill ?? ''}${summary}`, {}, template);
-    if (!parsed?.reasoning) return;  // no reasoning
+
+    // stick the prefill on the front and try to parse reasoning
+    let before_parse = `${prefill ?? ''}${summary}`
+    let parsed = ctx.parseReasoningFromString(before_parse, {}, template);
+    if (!parsed) return;  // Failed to parse\
+
+    // If content is the same after parsing, then no reasoning was parsed out.
+    // Note: this is needed because sometimes we parse out the reasoning template without there being any reasoning in it
+    if (before_parse == parsed.content) return
 
     // If we parsed reasoning, update the message
     set_data(message, 'memory', parsed.content);
     set_data(message, 'reasoning', parsed.reasoning);
-    set_data(message, 'prefill', null);  // prefill has been included in the reasoning
+    set_data(message, 'prefill', null);  // prefill is now included in the reasoning
     debug("Parsed reasoning: ", parsed)
 }
 
