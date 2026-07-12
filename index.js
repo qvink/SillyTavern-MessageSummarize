@@ -3407,6 +3407,10 @@ class SummaryQueue {
             let prefill = get_settings('prefill')
             debug("Message summarized: ", result)
 
+            // Trim whitespace
+            result.content = result.content?.trim()
+
+
             // The summary that is stored is WITHOUT the prefill, regardless of whether there was reasoning.
             // If there is reasoning, it will be stored with the prefill and the prefill will be empty
             set_data(message, 'memory', result.content);
