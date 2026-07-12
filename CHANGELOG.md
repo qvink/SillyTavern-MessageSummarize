@@ -1,12 +1,13 @@
 # Changelog
 
-#### v1.3.30
+#### v1.3.31
 - **Fixed**: No longer summarizes after an aborted stream
 - **Fixed**: Remember button actually summarizes again
 - **Fixed**: Fixed the injection threshold being off by one
 - **Fixed**: Fixed error when summarizing after the gallery window is opened
 - **Fixed**: Detecting size of last message prompt no longer fails in some cases
 - **Fixed**: Fixed case where reasoning is empty but reasoning template is still output
+- **Fixed**: Whitespace now trimmed from summaries
 
 #### v1.3.24
 **ST Version Requirement**: You must be on ST >= v1.14.0 (relies on [this PR](https://github.com/SillyTavern/SillyTavern/pull/4841))\
