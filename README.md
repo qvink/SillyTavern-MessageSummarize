@@ -248,6 +248,12 @@ This is most likely an issue with the summary prompt.\
   1. In the `Advanced Formatting` tab, make sure to fill in the thinking tags (e.g. `<think>` and `</think>` for DeepSeek R1).
   2. If you are using a different `Connection Profile` for your summaries, make sure that you have the right reasoning template associated with that profile.
 
+- **API requests aren't using the correct Response Configuration settings (temperature, max tokens, etc).**: Make sure your Response Configuration preset is saved to your connection profile:
+  1. Select your desired preset in the Response Configuration tab
+  2. Select your Connection Profile in the API Connections tab
+  3. Click "Edit a connection profile" (the pencil icon)
+  4. Make sure that "Settings Preset" is checked
+  5. Click "Save and Update"
 
 - **Incomplete sentences aren't getting trimmed even though the option is checked in the advanced formatting settings:** If you are using a different connection profile for summaries, note that instruction templates are part of that so the option needs to be checked in the templated used for that connection profile.
 
