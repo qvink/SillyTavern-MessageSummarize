@@ -70,6 +70,7 @@ How this extension addresses these issues:
 - This section of the config menu is where you control how your messages are summarized.
 - Click the `Edit` button to bring up a popup that allows you to edit the summarization prompt itself, along with custom macros that will insert messages from your chat. Here you can also change the role used for the prompt as well as a response prefill.
 - You can also set a separate `Connection Profile` to be used specifically for summarizations.
+- Enable `Disable Thinking` to request non-thinking mode for summarization only, without changing your main chat reasoning settings. This is off by default (the original behavior) and requires API/model support.
 - You can control whether messages get re-summarized when they are edited, swiped, or continued.
 - If you are using a cloud model with an API request limit, you can also set a `Time Delay` between summaries.
 
