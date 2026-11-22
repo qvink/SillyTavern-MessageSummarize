@@ -38,6 +38,8 @@
     "Completion Preset": "補全預設",
     "Configuration Profiles": "Qvink Memory 聊天記憶設定檔",
     "Connection Profile": "連線設定檔",
+    "Disable Thinking": "停用思考",
+    "Request non-thinking mode for summarization only, if supported by the API. When unchecked, use the normal reasoning settings.": "若 API 支援，僅在摘要時要求非思考模式。未勾選時，使用原本的推理設定。",
     "Context (": "上下文（",
     "Copy ALL memories to clipboard (all memories in the entire chat, not just those injected).": "將所有記憶複製到剪貼簿（包含整個聊天的所有記憶，而非僅限於注入部分）。",
     "Copy selected memories to clipboard": "將所選記憶複製到剪貼簿",

@@ -112,6 +112,7 @@ const default_settings = {
     prefill: "",   // summary prompt prefill
     show_prefill: false, // whether to show the prefill when memories are displayed
     connection_profile: "",  // connection profile to use for summarization. Empty ("") indicates the same as currently selected.
+    disable_thinking: false,  // request non-thinking mode for summarization only, if supported by the API
 
     auto_summarize: true,   // whether to automatically summarize new chat messages
     summarization_delay: 0,  // delay auto-summarization by this many messages (0 summarizes immediately after sending, 1 waits for one message, etc)
@@ -3451,7 +3452,9 @@ class SummaryQueue {
             toast(`Text to summarize (${token_size}) exceeds summary context size (${context_size}).`, "warning");
         }
 
-        let result = await ctx.ConnectionManagerRequestService.sendRequest(profile, messages)
+        let result = get_settings('disable_thinking')
+            ? await ctx.ConnectionManagerRequestService.sendRequest(profile, messages, undefined, { includePreset: true }, { include_reasoning: false })
+            : await ctx.ConnectionManagerRequestService.sendRequest(profile, messages)
 
         // trim incomplete sentences if set in ST settings
         if (ctx.powerUserSettings.trim_sentences) {
@@ -4292,6 +4295,7 @@ function initialize_settings_listeners() {
     })
 
     bind_setting('#connection_profile', 'connection_profile', 'text')
+    bind_setting('#disable_thinking', 'disable_thinking', 'boolean')
     bind_setting('#auto_summarize', 'auto_summarize', 'boolean');
     bind_setting('#auto_summarize_on_edit', 'auto_summarize_on_edit', 'boolean');
     bind_setting('#auto_summarize_on_swipe', 'auto_summarize_on_swipe', 'boolean');
